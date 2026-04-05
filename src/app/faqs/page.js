@@ -1,0 +1,172 @@
+'use client';
+
+import { useState } from 'react';
+
+export default function FAQsPage() {
+  const [openIndex, setOpenIndex] = useState(null);
+
+  const faqs = [
+    {
+      category: 'General',
+      questions: [
+        {
+          q: 'What is Dodo Academy?',
+          a: 'Dodo Academy is a Nigerian cybersecurity training platform focused on protecting critical infrastructure. We offer foundational courses and specialized training in areas like network security, ethical hacking, cryptography, and critical infrastructure protection.'
+        },
+        {
+          q: 'Who is Dodo Academy for?',
+          a: 'Our courses are designed for beginners with no prior cybersecurity experience, IT professionals looking to upskill, government agency staff, bank security teams, telecom engineers, and anyone interested in protecting Nigeria\'s digital infrastructure.'
+        },
+        {
+          q: 'Is Dodo Academy accredited?',
+          a: 'We align our curriculum with global standards including NIST, ISO 27001, and CIS Controls. We are actively working with NITDA and other Nigerian regulatory bodies for formal accreditation.'
+        }
+      ]
+    },
+    {
+      category: 'Courses & Learning',
+      questions: [
+        {
+          q: 'What is included in the Cybersecurity Foundation course?',
+          a: 'The foundation course includes 5 modules: Introduction to Cybersecurity, Network Security Fundamentals, Cryptography Basics, Ethical Hacking Basics, and a Final Assessment. You\'ll get lifetime access to all materials, progress tracking, and a digital certificate upon completion.'
+        },
+        {
+          q: 'How long does it take to complete the course?',
+          a: 'The course is self-paced. Most students complete it in 2-4 weeks, studying 5-10 hours per week. You can go faster or slower based on your schedule.'
+        },
+        {
+          q: 'Do I need any prior experience?',
+          a: 'No prior cybersecurity experience is required. The foundation course starts with basic concepts and builds up gradually. Basic computer literacy is helpful.'
+        },
+        {
+          q: 'What happens after I complete the course?',
+          a: 'After completing all lessons and passing the final assessment (16/20), you\'ll receive a digital certificate via email. You\'ll also be eligible for our advanced Critical Infrastructure Protection program.'
+        }
+      ]
+    },
+    {
+      category: 'Payment & Pricing',
+      questions: [
+        {
+          q: 'How much does the Cybersecurity Foundation course cost?',
+          a: 'The course costs ₦50,000 (one-time payment). This includes lifetime access to all materials, progress tracking, and your digital certificate.'
+        },
+        {
+          q: 'What payment methods do you accept?',
+          a: 'We accept payments via Paystack, which supports cards, bank transfers, USSD, and mobile money. All major Nigerian banks are supported.'
+        },
+        {
+          q: 'Is there a refund policy?',
+          a: 'Yes, we offer a 7-day money-back guarantee if you\'re not satisfied with the course. Contact our support team within 7 days of purchase for a full refund.'
+        }
+      ]
+    },
+    {
+      category: 'Technical Support',
+      questions: [
+        {
+          q: 'What technology do I need?',
+          a: 'You need a computer with internet access and a modern web browser (Chrome, Firefox, Safari, or Edge). No special software is required for the foundation course.'
+        },
+        {
+          q: 'How do I access my courses?',
+          a: 'After purchase, log into your account and go to the Dashboard. All your enrolled courses and progress will be displayed there.'
+        },
+        {
+          q: 'I forgot my password. What should I do?',
+          a: 'Click the "Forgot Password" link on the login page. You\'ll receive an email with instructions to reset your password.'
+        },
+        {
+          q: 'Who do I contact for technical issues?',
+          a: 'Email us at support@dodoacademy.ng or use the contact form on our website. We typically respond within 24 hours.'
+        }
+      ]
+    },
+    {
+      category: 'Certification',
+      questions: [
+        {
+          q: 'Will I receive a certificate after completing the course?',
+          a: 'Yes! After passing the final assessment (scoring 16/20 or higher), you\'ll receive a digital certificate via email. You can download and share it on LinkedIn.'
+        },
+        {
+          q: 'Is the certificate recognized by employers?',
+          a: 'Our certificate demonstrates your foundational knowledge in cybersecurity. Many employers in Nigeria recognize our training, especially those focused on critical infrastructure protection.'
+        },
+        {
+          q: 'Can I get a physical copy of my certificate?',
+          a: 'We provide digital certificates that can be printed. If you need an official hard copy, contact our support team for arrangements (additional fees may apply).'
+        }
+      ]
+    },
+    {
+      category: 'Partnerships & Enterprise',
+      questions: [
+        {
+          q: 'Do you offer corporate training?',
+          a: 'Yes, we provide customized training programs for organizations. Contact our consultancy team for a tailored proposal based on your needs.'
+        },
+        {
+          q: 'How can my organization partner with Dodo Academy?',
+          a: 'We welcome partnerships with government agencies, educational institutions, and private companies. Email partnerships@dodoacademy.ng to discuss opportunities.'
+        }
+      ]
+    }
+  ];
+
+  return (
+    <div className="max-w-4xl mx-auto">
+      <div className="text-center mb-12">
+        <h1 className="text-4xl font-bold mb-4">Frequently Asked Questions</h1>
+        <p className="text-xl text-gray-600">
+          Find answers to common questions about Dodo Academy.
+        </p>
+      </div>
+
+      {faqs.map((category, catIndex) => (
+        <div key={catIndex} className="mb-8">
+          <h2 className="text-2xl font-bold text-[#0B1E33] mb-4 pb-2 border-b-2 border-[#FFB347] inline-block">
+            {category.category}
+          </h2>
+          <div className="mt-4 space-y-3">
+            {category.questions.map((faq, qIndex) => {
+              const globalIndex = `${catIndex}-${qIndex}`;
+              const isOpen = openIndex === globalIndex;
+              
+              return (
+                <div key={qIndex} className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+                  <button
+                    onClick={() => setOpenIndex(isOpen ? null : globalIndex)}
+                    className="w-full text-left p-5 font-semibold text-lg text-[#0B1E33] hover:bg-gray-50 transition flex justify-between items-center"
+                  >
+                    <span>{faq.q}</span>
+                    <span className="text-2xl text-[#FFB347]">{isOpen ? '−' : '+'}</span>
+                  </button>
+                  {isOpen && (
+                    <div className="px-5 pb-5 text-gray-600 leading-relaxed border-t border-gray-100 pt-3">
+                      {faq.a}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      ))}
+
+      {/* Contact Section */}
+      <div className="mt-12 bg-gradient-to-r from-[#0B1E33] to-[#1A3A5F] text-white rounded-2xl p-8 text-center">
+        <h3 className="text-2xl font-bold mb-2">Still have questions?</h3>
+        <p className="mb-4">We're here to help. Contact our support team.</p>
+        <div className="flex flex-col md:flex-row gap-4 justify-center">
+          <a href="mailto:info@dodoacademy.ng" className="bg-[#FFB347] text-[#0B1E33] px-6 py-2 rounded-full font-semibold hover:bg-[#FFC97A] transition">
+            Email Us
+          </a>
+          <a href="/critical" className="border-2 border-white text-white px-6 py-2 rounded-full font-semibold hover:bg-white hover:text-[#0B1E33] transition">
+            Contact Form
+          </a>
+        </div>
+      </div>
+    </div>
+  );
+}
