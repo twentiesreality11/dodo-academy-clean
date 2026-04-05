@@ -8,6 +8,8 @@ export async function POST(request, { params }) {
     const user = await requireAuth();
     const db = await getDb();
     const { lessonId } = params;
+
+
     
     // Mark lesson as complete
     await db.run(

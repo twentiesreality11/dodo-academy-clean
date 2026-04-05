@@ -1,32 +1,32 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  reactStrictMode: true,
-  swcMinify: true,
+  // Static export configuration
+  trailingSlash: true,
+  
+  // Image configuration
   images: {
-    domains: ['localhost', 'res.cloudinary.com'],
+    unoptimized: true,
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'localhost',
+      },
+      {
+        protocol: 'https',
+        hostname: 'res.cloudinary.com',
+      },
+    ],
   },
-  experimental: {
-    serverComponentsExternalPackages: ['sqlite3', 'bcryptjs'],
-  },
-  // Allow Next.js to handle SQLite properly
-  webpack: (config, { isServer }) => {
-    if (!isServer) {
-      config.resolve.fallback = {
-        fs: false,
-        net: false,
-        tls: false,
-        path: false,
-        crypto: false,
-        stream: false,
-        util: false,
-        assert: false,
-        url: false,
-        http: false,
-        https: false,
-        os: false,
-      };
-    }
-    return config;
+  
+  // External packages that need Node.js modules
+  serverExternalPackages: ['sqlite3', 'bcryptjs'],
+  
+  // Turbopack configuration (empty is fine for most projects)
+  turbopack: {},
+  
+  // Compiler options
+  compiler: {
+    removeConsole: process.env.NODE_ENV === 'production',
   },
 };
 
