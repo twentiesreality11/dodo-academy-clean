@@ -8,7 +8,6 @@ import toast from 'react-hot-toast';
 export default function LessonPage() {
   const params = useParams();
   const router = useRouter();
-  // IMPORTANT: The key must match the folder name exactly: [lessonId]
   const lessonId = params?.lessonId;
   
   const [lesson, setLesson] = useState(null);
@@ -16,12 +15,7 @@ export default function LessonPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    console.log('Full params:', params);
-    console.log('Extracted lessonId:', lessonId);
-    
     if (!lessonId) {
-      console.log('No lessonId found in params');
-      setLoading(false);
       toast.error('Invalid lesson ID');
       router.push('/foundation/dashboard');
       return;
@@ -33,19 +27,22 @@ export default function LessonPage() {
         const res = await fetch(`/api/lessons/${lessonId}`);
         const data = await res.json();
         
-        console.log('Response status:', res.status);
+        console.log('API response:', res.status, data);
         
-        if (res.status === 404) {
-          toast.error('Lesson not found');
-          router.push('/foundation/dashboard');
+        if (res.status === 401) {
+          toast.error('Please login to continue');
+          router.push('/login');
         } else if (res.status === 403) {
           toast.error('Please purchase the course to access lessons');
           router.push('/foundation/checkout');
+        } else if (res.status === 404) {
+          toast.error('Lesson not found');
+          router.push('/foundation/dashboard');
         } else if (data.lesson) {
           setLesson(data.lesson);
           setCompleted(data.completed);
         } else {
-          toast.error('Lesson not found');
+          toast.error('Failed to load lesson');
           router.push('/foundation/dashboard');
         }
       } catch (err) {
@@ -57,7 +54,7 @@ export default function LessonPage() {
     }
     
     fetchLesson();
-  }, [lessonId, router, params]);
+  }, [lessonId, router]);
 
   async function markComplete() {
     try {
@@ -91,7 +88,7 @@ export default function LessonPage() {
         <div className="bg-red-50 border border-red-200 rounded-2xl p-8 max-w-md mx-auto">
           <h2 className="text-2xl font-bold text-red-600 mb-4">Lesson Not Found</h2>
           <p className="text-gray-700 mb-6">
-            The lesson you're looking for doesn't exist. Please check the dashboard.
+            The lesson you're looking for doesn't exist.
           </p>
           <Link href="/foundation/dashboard" className="btn-primary inline-block">
             Back to Dashboard
