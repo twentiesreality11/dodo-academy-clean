@@ -14,34 +14,40 @@ export default function LessonPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetchLesson();
-  }, [lessonId]);
-
-  async function fetchLesson() {
-    try {
-      const res = await fetch(`/api/lessons/${lessonId}`);
-      const data = await res.json();
-      
-      if (res.status === 403) {
-        toast.error('Please purchase the course to access lessons');
-        router.push('/foundation/checkout');
-        return;
+    if (!lessonId) return;
+    
+    async function fetchLesson() {
+      try {
+        console.log('Fetching lesson:', lessonId);
+        const res = await fetch(`/api/lessons/${lessonId}`);
+        const data = await res.json();
+        
+        console.log('Response status:', res.status);
+        console.log('Response data:', data);
+        
+        if (res.status === 404) {
+          toast.error('Lesson not found');
+          router.push('/foundation/dashboard');
+        } else if (res.status === 403) {
+          toast.error('Please purchase the course to access lessons');
+          router.push('/foundation/checkout');
+        } else if (data.lesson) {
+          setLesson(data.lesson);
+          setCompleted(data.completed);
+        } else {
+          toast.error('Lesson not found');
+          router.push('/foundation/dashboard');
+        }
+      } catch (err) {
+        console.error('Error fetching lesson:', err);
+        toast.error('Failed to load lesson');
+      } finally {
+        setLoading(false);
       }
-      
-      if (data.lesson) {
-        setLesson(data.lesson);
-        setCompleted(data.completed);
-      } else {
-        toast.error('Lesson not found');
-        router.push('/foundation/dashboard');
-      }
-    } catch (error) {
-      toast.error('Error loading lesson');
-      router.push('/foundation/dashboard');
-    } finally {
-      setLoading(false);
     }
-  }
+    
+    fetchLesson();
+  }, [lessonId, router]);
 
   async function markComplete() {
     try {
@@ -69,7 +75,21 @@ export default function LessonPage() {
     );
   }
 
-  if (!lesson) return null;
+  if (!lesson) {
+    return (
+      <div className="text-center py-12">
+        <div className="bg-red-50 border border-red-200 rounded-2xl p-8 max-w-md mx-auto">
+          <h2 className="text-2xl font-bold text-red-600 mb-4">Lesson Not Found</h2>
+          <p className="text-gray-700 mb-6">
+            The lesson you're looking for doesn't exist. Please check the dashboard.
+          </p>
+          <Link href="/foundation/dashboard" className="btn-primary inline-block">
+            Back to Dashboard
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div>
