@@ -26,7 +26,7 @@ export async function createUser(name, email, password) {
       throw new Error('Email already exists');
     }
     
-    const result = await execute(
+    await execute(
       'INSERT INTO users (id, name, email, password) VALUES ($1, $2, $3, $4)',
       [id, name, email, hashedPassword]
     );
@@ -55,7 +55,7 @@ export async function loginUser(email, password) {
 }
 
 export async function getUser() {
-  const cookieStore = cookies();
+  const cookieStore = await cookies();
   const sessionId = cookieStore.get(SESSION_COOKIE)?.value;
   
   if (!sessionId) return null;
@@ -65,7 +65,8 @@ export async function getUser() {
 }
 
 export async function setUserSession(userId) {
-  cookies().set(SESSION_COOKIE, userId, {
+  const cookieStore = await cookies();
+  cookieStore.set(SESSION_COOKIE, userId, {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
     sameSite: 'lax',
@@ -75,7 +76,8 @@ export async function setUserSession(userId) {
 }
 
 export async function logoutUser() {
-  cookies().delete(SESSION_COOKIE);
+  const cookieStore = await cookies();
+  cookieStore.delete(SESSION_COOKIE);
   redirect('/');
 }
 
