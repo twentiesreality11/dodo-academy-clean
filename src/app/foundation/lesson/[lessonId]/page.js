@@ -8,13 +8,24 @@ import toast from 'react-hot-toast';
 export default function LessonPage() {
   const params = useParams();
   const router = useRouter();
-  const lessonId = params.lessonId;
+  // IMPORTANT: The key must match the folder name exactly: [lessonId]
+  const lessonId = params?.lessonId;
+  
   const [lesson, setLesson] = useState(null);
   const [completed, setCompleted] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!lessonId) return;
+    console.log('Full params:', params);
+    console.log('Extracted lessonId:', lessonId);
+    
+    if (!lessonId) {
+      console.log('No lessonId found in params');
+      setLoading(false);
+      toast.error('Invalid lesson ID');
+      router.push('/foundation/dashboard');
+      return;
+    }
     
     async function fetchLesson() {
       try {
@@ -23,7 +34,6 @@ export default function LessonPage() {
         const data = await res.json();
         
         console.log('Response status:', res.status);
-        console.log('Response data:', data);
         
         if (res.status === 404) {
           toast.error('Lesson not found');
@@ -47,7 +57,7 @@ export default function LessonPage() {
     }
     
     fetchLesson();
-  }, [lessonId, router]);
+  }, [lessonId, router, params]);
 
   async function markComplete() {
     try {
