@@ -1,13 +1,12 @@
 import { requireAuth } from '@/lib/auth';
-import { getDb } from '@/lib/db';
+import { execute } from '@/lib/db';
 import { NextResponse } from 'next/server';
 import { v4 as uuidv4 } from 'uuid';
 import axios from 'axios';
 
-export async function POST(request) {
+export async function POST() {
   try {
     const user = await requireAuth();
-    const db = await getDb();
     
     const reference = `DODO-${uuidv4()}`;
     const amount = 50000; // ₦50,000 in kobo
@@ -29,10 +28,9 @@ export async function POST(request) {
     );
     
     if (response.data.status) {
-      // Store pending payment
-      await db.run(
+      await execute(
         `INSERT INTO payments (id, user_id, reference, amount, status, course_type) 
-         VALUES (?, ?, ?, ?, ?, ?)`,
+         VALUES ($1, $2, $3, $4, $5, $6)`,
         [uuidv4(), user.id, reference, amount, 'pending', 'foundation']
       );
       
@@ -46,7 +44,7 @@ export async function POST(request) {
       );
     }
   } catch (error) {
-    console.error('Paystack error:', error.response?.data || error.message);
+    console.error('Payment initialization error:', error);
     return NextResponse.json(
       { error: 'Payment initialization failed' },
       { status: 500 }

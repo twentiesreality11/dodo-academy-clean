@@ -1,4 +1,4 @@
-import { getDb } from '@/lib/db';
+import { getOne, execute, getAll } from '@/lib/db';
 import { NextResponse, NextRequest } from 'next/server';
 import axios from 'axios';
 
@@ -21,28 +21,28 @@ export async function GET(request) {
     );
     
     const data = response.data.data;
-    const db = await getDb();
     
     if (data.status === 'success') {
       // Update payment status
-      await db.run(
-        'UPDATE payments SET status = ? WHERE reference = ?',
+      await execute(
+        'UPDATE payments SET status = $1 WHERE reference = $2',
         ['success', reference]
       );
       
       // Get user_id from payment
-      const payment = await db.get(
-        'SELECT user_id FROM payments WHERE reference = ?',
+      const payment = await getOne(
+        'SELECT user_id FROM payments WHERE reference = $1',
         [reference]
       );
       
       if (payment) {
         // Initialize progress for all lessons
-        const lessons = await db.all('SELECT id FROM lessons');
+        const lessons = await getAll('SELECT id FROM lessons');
         for (const lesson of lessons) {
-          await db.run(
-            `INSERT OR IGNORE INTO progress (user_id, lesson_id, completed) 
-             VALUES (?, ?, 0)`,
+          await execute(
+            `INSERT INTO progress (user_id, lesson_id, completed) 
+             VALUES ($1, $2, false)
+             ON CONFLICT (user_id, lesson_id) DO NOTHING`,
             [payment.user_id, lesson.id]
           );
         }

@@ -1,9 +1,5 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // Static export configuration
-  trailingSlash: true,
-  
-  // Image configuration
   images: {
     unoptimized: true,
     remotePatterns: [
@@ -15,19 +11,14 @@ const nextConfig = {
         protocol: 'https',
         hostname: 'res.cloudinary.com',
       },
+      {
+        protocol: 'https',
+        hostname: 'vercel.app',
+      },
     ],
   },
-  
-  // External packages that need Node.js modules
+  trailingSlash: true,
   serverExternalPackages: ['sqlite3', 'bcryptjs'],
-  
-  // Turbopack configuration (empty is fine for most projects)
-  turbopack: {},
-  
-  // Compiler options
-  compiler: {
-    removeConsole: process.env.NODE_ENV === 'production',
-  },
 };
 
 module.exports = nextConfig;

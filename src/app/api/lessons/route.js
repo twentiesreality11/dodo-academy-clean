@@ -1,16 +1,15 @@
 import { requireAuth } from '@/lib/auth';
-import { getDb } from '@/lib/db';
+import { getAll, getOne } from '@/lib/db';
 import { NextResponse } from 'next/server';
 
 export async function GET() {
   try {
     const user = await requireAuth();
-    const db = await getDb();
     
     // Check if user has paid
-    const payment = await db.get(
+    const payment = await getOne(
       `SELECT status FROM payments 
-       WHERE user_id = ? AND course_type = 'foundation' AND status = 'success'
+       WHERE user_id = $1 AND course_type = 'foundation' AND status = 'success'
        ORDER BY created_at DESC LIMIT 1`,
       [user.id]
     );
@@ -23,17 +22,18 @@ export async function GET() {
     }
     
     // Get lessons with progress
-    const lessons = await db.all(
+    const lessons = await getAll(
       `SELECT l.*, 
-       CASE WHEN p.completed = 1 THEN true ELSE false END as completed
+       COALESCE(p.completed, false) as completed
        FROM lessons l
-       LEFT JOIN progress p ON l.id = p.lesson_id AND p.user_id = ?
+       LEFT JOIN progress p ON l.id = p.lesson_id AND p.user_id = $1
        ORDER BY l.order_num`,
       [user.id]
     );
     
     return NextResponse.json({ lessons });
   } catch (error) {
+    console.error('Lessons API error:', error);
     return NextResponse.json(
       { error: error.message },
       { status: 500 }
