@@ -3,22 +3,11 @@ import { neon } from '@neondatabase/serverless';
 // Initialize the Neon connection using the environment variable
 const sql = neon(process.env.POSTGRES_URL);
 
-// Helper function to execute queries with tagged template syntax
+// Helper function to execute queries with parameterized placeholders ($1, $2)
 export async function query(text, params = []) {
   try {
-    // Use the tagged template approach for parameterized queries
-    if (params && params.length > 0) {
-      // Build the query with $1, $2 placeholders
-      let queryText = text;
-      for (let i = 0; i < params.length; i++) {
-        queryText = queryText.replace(`$${i + 1}`, `'${params[i].toString().replace(/'/g, "''")}'`);
-      }
-      const result = await sql(queryText);
-      return result;
-    } else {
-      const result = await sql(text);
-      return result;
-    }
+    const result = await sql.query(text, params);
+    return result.rows;
   } catch (error) {
     console.error('Database query error:', error);
     throw error;
@@ -26,20 +15,10 @@ export async function query(text, params = []) {
 }
 
 // Get a single record (first row)
-export async function getOne(queryText, params = []) {
+export async function getOne(text, params = []) {
   try {
-    let result;
-    if (params && params.length > 0) {
-      let queryWithParams = queryText;
-      for (let i = 0; i < params.length; i++) {
-        const value = typeof params[i] === 'string' ? `'${params[i].replace(/'/g, "''")}'` : params[i];
-        queryWithParams = queryWithParams.replace(`$${i + 1}`, value);
-      }
-      result = await sql(queryWithParams);
-    } else {
-      result = await sql(queryText);
-    }
-    return result[0] || null;
+    const result = await sql.query(text, params);
+    return result.rows[0] || null;
   } catch (error) {
     console.error('Database getOne error:', error);
     throw error;
@@ -47,18 +26,10 @@ export async function getOne(queryText, params = []) {
 }
 
 // Get all records
-export async function getAll(queryText, params = []) {
+export async function getAll(text, params = []) {
   try {
-    if (params && params.length > 0) {
-      let queryWithParams = queryText;
-      for (let i = 0; i < params.length; i++) {
-        const value = typeof params[i] === 'string' ? `'${params[i].replace(/'/g, "''")}'` : params[i];
-        queryWithParams = queryWithParams.replace(`$${i + 1}`, value);
-      }
-      return await sql(queryWithParams);
-    } else {
-      return await sql(queryText);
-    }
+    const result = await sql.query(text, params);
+    return result.rows;
   } catch (error) {
     console.error('Database getAll error:', error);
     throw error;
@@ -66,18 +37,10 @@ export async function getAll(queryText, params = []) {
 }
 
 // Execute an operation (insert, update, delete)
-export async function execute(queryText, params = []) {
+export async function execute(text, params = []) {
   try {
-    if (params && params.length > 0) {
-      let queryWithParams = queryText;
-      for (let i = 0; i < params.length; i++) {
-        const value = typeof params[i] === 'string' ? `'${params[i].replace(/'/g, "''")}'` : params[i];
-        queryWithParams = queryWithParams.replace(`$${i + 1}`, value);
-      }
-      return await sql(queryWithParams);
-    } else {
-      return await sql(queryText);
-    }
+    const result = await sql.query(text, params);
+    return result;
   } catch (error) {
     console.error('Database execute error:', error);
     throw error;

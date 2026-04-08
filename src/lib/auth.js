@@ -20,6 +20,7 @@ export async function createUser(name, email, password) {
   const hashedPassword = await hashPassword(password);
   
   try {
+    // Check if user already exists
     const existingUser = await getOne('SELECT id FROM users WHERE email = $1', [email]);
     if (existingUser) {
       throw new Error('Email already exists');
