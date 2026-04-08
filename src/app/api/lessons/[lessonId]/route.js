@@ -1,19 +1,19 @@
-export const dynamic = 'force-dynamic';
-
 import { requireAuth } from '@/lib/auth';
-import { getDb } from '@/lib/db';
+import { getOne, getAll } from '@/lib/db';
 import { NextResponse } from 'next/server';
+
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
 
 export async function GET(request, { params }) {
   try {
     const user = await requireAuth();
-    const db = await getDb();
     const { lessonId } = params;
     
     // Check if user has paid
-    const payment = await db.get(
+    const payment = await getOne(
       `SELECT status FROM payments 
-       WHERE user_id = ? AND course_type = 'foundation' AND status = 'success'
+       WHERE user_id = $1 AND course_type = 'foundation' AND status = 'success'
        ORDER BY created_at DESC LIMIT 1`,
       [user.id]
     );
@@ -25,8 +25,9 @@ export async function GET(request, { params }) {
       );
     }
     
-    const lesson = await db.get(
-      'SELECT * FROM lessons WHERE id = ?',
+    // Get the specific lesson
+    const lesson = await getOne(
+      'SELECT * FROM lessons WHERE id = $1',
       [lessonId]
     );
     
@@ -37,8 +38,9 @@ export async function GET(request, { params }) {
       );
     }
     
-    const progress = await db.get(
-      'SELECT completed FROM progress WHERE user_id = ? AND lesson_id = ?',
+    // Check if lesson is completed
+    const progress = await getOne(
+      'SELECT completed FROM progress WHERE user_id = $1 AND lesson_id = $2',
       [user.id, lessonId]
     );
     
@@ -47,6 +49,7 @@ export async function GET(request, { params }) {
       completed: progress ? progress.completed : false
     });
   } catch (error) {
+    console.error('Lesson API error:', error);
     return NextResponse.json(
       { error: error.message },
       { status: 500 }
