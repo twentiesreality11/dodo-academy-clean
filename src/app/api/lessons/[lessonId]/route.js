@@ -8,9 +8,10 @@ export const runtime = 'nodejs';
 export async function GET(request, { params }) {
   try {
     const user = await requireAuth();
-    const { lessonId } = params;
+    // Ensure lessonId is treated as a string
+    const lessonId = String(params.lessonId);
     
-    console.log('Fetching lesson:', lessonId, 'for user:', user.id);
+    console.log('Looking for lesson ID:', lessonId);
     
     // Check if user has paid
     const payment = await getOne(
@@ -21,21 +22,20 @@ export async function GET(request, { params }) {
     );
     
     if (!payment) {
-      console.log('User has not paid');
       return NextResponse.json(
-        { error: 'Access denied' },
+        { error: 'Access denied. Please purchase the course.' },
         { status: 403 }
       );
     }
     
-    // Get the specific lesson
+    // Get the specific lesson - ensure ID comparison works
     const lesson = await getOne(
       'SELECT * FROM lessons WHERE id = $1',
       [lessonId]
     );
     
     if (!lesson) {
-      console.log('Lesson not found:', lessonId);
+      console.log('Lesson not found for ID:', lessonId);
       return NextResponse.json(
         { error: 'Lesson not found' },
         { status: 404 }
@@ -47,8 +47,6 @@ export async function GET(request, { params }) {
       'SELECT completed FROM progress WHERE user_id = $1 AND lesson_id = $2',
       [user.id, lessonId]
     );
-    
-    console.log('Lesson found:', lesson.title);
     
     return NextResponse.json({
       lesson,
