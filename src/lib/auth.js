@@ -22,15 +22,16 @@ export async function createUser(name, email, password) {
   try {
     // Check if user already exists
     const existingUser = await getOne('SELECT id FROM users WHERE email = $1', [email]);
-    if (existingUser) {
+    if (existingUser && existingUser.id) {
       throw new Error('Email already exists');
     }
     
-    await execute(
+    const result = await execute(
       'INSERT INTO users (id, name, email, password) VALUES ($1, $2, $3, $4)',
       [id, name, email, hashedPassword]
     );
     
+    console.log('User created successfully:', { id, name, email });
     return { id, name, email };
   } catch (error) {
     console.error('Create user error:', error);
