@@ -1,5 +1,3 @@
-export const dynamic = 'force-dynamic';
-
 import { requireAuth } from '@/lib/auth';
 import { execute } from '@/lib/db';
 import { NextResponse } from 'next/server';
@@ -11,7 +9,7 @@ export async function POST() {
     const user = await requireAuth();
     
     const reference = `DODO-${uuidv4()}`;
-    const amount = 50000; // ₦50,000 in kobo
+    const amount = 5000000; // ₦50,000 in kobo (50,000 × 100)
     
     const response = await axios.post(
       'https://api.paystack.co/transaction/initialize',
