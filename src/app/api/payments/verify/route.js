@@ -1,18 +1,24 @@
-export const dynamic = 'force-dynamic';
-
 import { getOne, execute, getAll } from '@/lib/db';
 import { NextResponse, NextRequest } from 'next/server';
 import axios from 'axios';
 
+// Force dynamic rendering and Node.js runtime
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
+
 export async function GET(request) {
-  const searchParams = request.nextUrl.searchParams;
-  const reference = searchParams.get('reference');
-  
-  if (!reference) {
-    return NextResponse.redirect(new URL('/foundation/cancel', request.url));
-  }
-  
   try {
+    const searchParams = request.nextUrl.searchParams;
+    const reference = searchParams.get('reference');
+    
+    console.log('Callback received with reference:', reference); // Debug log
+    
+    if (!reference) {
+      console.error('No reference provided');
+      return NextResponse.redirect(new URL('/foundation/cancel', request.url));
+    }
+    
+    // Verify with Paystack
     const response = await axios.get(
       `https://api.paystack.co/transaction/verify/${reference}`,
       {
@@ -21,6 +27,8 @@ export async function GET(request) {
         },
       }
     );
+    
+    console.log('Paystack verification response:', response.data.status); // Debug log
     
     const data = response.data.data;
     
@@ -50,12 +58,15 @@ export async function GET(request) {
         }
       }
       
+      console.log('Payment verified, redirecting to dashboard'); // Debug log
       return NextResponse.redirect(new URL('/foundation/dashboard', request.url));
     } else {
+      console.error('Payment verification failed:', data.status);
       return NextResponse.redirect(new URL('/foundation/cancel', request.url));
     }
   } catch (error) {
     console.error('Payment verification error:', error);
-    return NextResponse.redirect(new URL('/foundation/cancel', request.url));
+    // Return a proper error response instead of letting Vercel mask it
+    return NextResponse.redirect(new URL('/foundation/cancel?error=verification_failed', request.url));
   }
 }
