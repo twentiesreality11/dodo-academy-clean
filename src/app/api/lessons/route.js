@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic';
+
 import { requireAuth } from '@/lib/auth';
 import { getAll, getOne } from '@/lib/db';
 import { NextResponse } from 'next/server';

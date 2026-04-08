@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic';
+
 import { getOne, execute, getAll } from '@/lib/db';
 import { NextResponse, NextRequest } from 'next/server';
 import axios from 'axios';

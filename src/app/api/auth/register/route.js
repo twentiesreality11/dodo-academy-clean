@@ -1,3 +1,6 @@
+export const dynamic = 'force-dynamic';
+
+
 import { createUser, setUserSession } from '@/lib/auth';
 import { sendWelcomeEmail } from '@/utils/email';
 import { NextResponse } from 'next/server';
