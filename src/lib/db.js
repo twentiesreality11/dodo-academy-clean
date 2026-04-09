@@ -6,7 +6,9 @@ import { v4 as uuidv4 } from 'uuid';
 const dataDir = path.join(process.cwd(), 'data');
 const usersFile = path.join(dataDir, 'users.json');
 const lessonsFile = path.join(dataDir, 'lessons.json');
+const assessmentFile = path.join(dataDir, 'assessment.json');
 const progressFile = path.join(dataDir, 'progress.json');
+const attemptsFile = path.join(dataDir, 'attempts.json');
 
 function readJSON(filePath) {
   try {
@@ -29,7 +31,9 @@ function writeJSON(filePath, data) {
 // Initialize files
 if (!fs.existsSync(usersFile)) writeJSON(usersFile, { users: [] });
 if (!fs.existsSync(progressFile)) writeJSON(progressFile, { progress: [] });
+if (!fs.existsSync(attemptsFile)) writeJSON(attemptsFile, { attempts: [] });
 
+// ============ USER OPERATIONS ============
 export function getUsers() {
   const data = readJSON(usersFile);
   return data.users || [];
@@ -66,6 +70,7 @@ export async function verifyUser(email, password) {
   return userWithoutPassword;
 }
 
+// ============ LESSON OPERATIONS ============
 export function getLessons() {
   const data = readJSON(lessonsFile);
   return data.lessons || [];
@@ -75,6 +80,7 @@ export function getLessonById(id) {
   return getLessons().find(l => l.id === id);
 }
 
+// ============ PROGRESS OPERATIONS ============
 export function getProgress(userId) {
   const data = readJSON(progressFile);
   return (data.progress || []).filter(p => p.user_id === userId);
@@ -93,4 +99,40 @@ export function markLessonComplete(userId, lessonId) {
   }
   
   return writeJSON(progressFile, data);
+}
+
+// NEW: Update lesson progress (alias for markLessonComplete)
+export function updateLessonProgress(userId, lessonId, completed) {
+  if (completed) {
+    return markLessonComplete(userId, lessonId);
+  }
+  return true;
+}
+
+// ============ ASSESSMENT OPERATIONS ============
+export function getAssessmentQuestions() {
+  const data = readJSON(assessmentFile);
+  return data.questions || [];
+}
+
+// NEW: Save assessment attempt
+export function saveAssessmentAttempt(userId, score, passed) {
+  const data = readJSON(attemptsFile);
+  if (!data.attempts) data.attempts = [];
+  
+  data.attempts.push({
+    id: uuidv4(),
+    user_id: userId,
+    score: score,
+    passed: passed,
+    created_at: new Date().toISOString()
+  });
+  
+  return writeJSON(attemptsFile, data);
+}
+
+// NEW: Get user's assessment attempts
+export function getAssessmentAttempts(userId) {
+  const data = readJSON(attemptsFile);
+  return (data.attempts || []).filter(a => a.user_id === userId);
 }
