@@ -1,84 +1,52 @@
-export const dynamic = 'force-dynamic';
-
-import { requireAuth } from '@/lib/auth';
-import { getOne, getAll, execute } from '@/lib/db';
 import { NextResponse } from 'next/server';
-import { sendCongratulatoryEmail, scheduleCertificateEmail } from '@/utils/email';
+import { getAssessmentQuestions, getUserById, saveAssessmentAttempt, updateLessonProgress } from '@/lib/db';
+import { sendAssessmentPassedEmail, sendAssessmentFailedEmail } from '@/lib/email';
 
 export async function POST(request) {
   try {
-    const user = await requireAuth();
-    const { answers } = await request.json();
+    const { answers, userId } = await request.json();
     
-    // Get all questions
-    const questions = await getAll('SELECT * FROM assessment_questions ORDER BY id');
-    
-    if (!questions || questions.length === 0) {
-      return NextResponse.json(
-        { error: 'No questions found' },
-        { status: 400 }
-      );
+    if (!userId) {
+      return NextResponse.json({ error: 'User ID required' }, { status: 400 });
     }
+    
+    const user = getUserById(userId);
+    if (!user) {
+      return NextResponse.json({ error: 'User not found' }, { status: 401 });
+    }
+    
+    const questions = getAssessmentQuestions();
+    let score = 0;
     
     // Calculate score
-    let score = 0;
-    for (let i = 0; i < questions.length; i++) {
-      const userAnswer = answers[`q${i}`];
-      if (userAnswer !== undefined && userAnswer !== '' && parseInt(userAnswer) === questions[i].correct_answer) {
+    questions.forEach((q, index) => {
+      const userAnswer = answers[`q${index}`];
+      if (userAnswer !== undefined && parseInt(userAnswer) === q.correct_answer) {
         score++;
       }
-    }
+    });
     
     const passed = score >= 16;
     const total = questions.length;
     
-    // Check if user already passed before
-    const existingPass = await getOne(
-      'SELECT passed FROM assessment_attempts WHERE user_id = $1 AND passed = true ORDER BY created_at DESC LIMIT 1',
-      [user.id]
-    );
+    // Save attempt
+    saveAssessmentAttempt(userId, score, passed);
     
-    // Store attempt
-    await execute(
-      'INSERT INTO assessment_attempts (user_id, score, passed) VALUES ($1, $2, $3)',
-      [user.id, score, passed]
-    );
+    // If passed, mark final lesson as complete
+    if (passed) {
+      updateLessonProgress(userId, '5', true);
+    }
     
-    if (passed && !existingPass) {
-      // Mark final assessment lesson as complete (lesson id 5)
-      await execute(
-        `INSERT INTO progress (user_id, lesson_id, completed, completed_at) 
-         VALUES ($1, '5', true, CURRENT_TIMESTAMP)
-         ON CONFLICT (user_id, lesson_id) 
-         DO UPDATE SET completed = true, completed_at = CURRENT_TIMESTAMP`,
-        [user.id]
-      );
-      
-      // Send congratulatory email
-      await sendCongratulatoryEmail(user.email, user.name, score, total);
-      
-      // Send certificate email
-      await scheduleCertificateEmail(user.email, user.name, score);
-      
-      // Check if all lessons are completed for badge
-      const allLessons = await getAll('SELECT id FROM lessons');
-      const completedLessons = await getAll(
-        'SELECT lesson_id FROM progress WHERE user_id = $1 AND completed = true',
-        [user.id]
-      );
-      
-      if (completedLessons.length === allLessons.length) {
-        const { sendBadgeEmail } = await import('@/utils/email');
-        await sendBadgeEmail(user.email, user.name);
-      }
+    // Send email based on result
+    if (passed) {
+      await sendAssessmentPassedEmail(user.name, user.email, score, total);
+    } else {
+      await sendAssessmentFailedEmail(user.name, user.email, score, total);
     }
     
     return NextResponse.json({ score, total, passed });
   } catch (error) {
-    console.error('Assessment submit error:', error);
-    return NextResponse.json(
-      { error: error.message },
-      { status: 500 }
-    );
+    console.error('Assessment submission error:', error);
+    return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }

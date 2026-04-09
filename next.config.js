@@ -2,13 +2,8 @@
 const nextConfig = {
   images: {
     unoptimized: true,
-    remotePatterns: [
-      { protocol: 'https', hostname: 'localhost' },
-      { protocol: 'https', hostname: 'res.cloudinary.com' },
-    ],
   },
-  trailingSlash: false,  // Set to false for Netlify
-  serverExternalPackages: ['@neondatabase/serverless'],
+  trailingSlash: false,
 };
 
 module.exports = nextConfig;

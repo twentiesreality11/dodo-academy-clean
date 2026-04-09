@@ -3,81 +3,72 @@
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import toast from 'react-hot-toast';
 
 export default function LessonPage() {
   const params = useParams();
   const router = useRouter();
   const lessonId = params?.lessonId;
-  
+  const [user, setUser] = useState(null);
   const [lesson, setLesson] = useState(null);
   const [completed, setCompleted] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!lessonId) {
-      toast.error('Invalid lesson ID');
-      router.push('/foundation/dashboard');
-      return;
-    }
+    if (!lessonId) return;
     
-    async function fetchLesson() {
+    async function fetchData() {
       try {
-        console.log('Fetching lesson:', lessonId);
-        const res = await fetch(`/api/lessons/${lessonId}`);
-        const data = await res.json();
+        // Get user
+        const meRes = await fetch('/api/auth/me');
+        const meData = await meRes.json();
         
-        console.log('API response:', res.status, data);
-        
-        if (res.status === 401) {
-          toast.error('Please login to continue');
+        if (!meData.user) {
           router.push('/login');
-        } else if (res.status === 403) {
-          toast.error('Please purchase the course to access lessons');
-          router.push('/foundation/checkout');
-        } else if (res.status === 404) {
-          toast.error('Lesson not found');
-          router.push('/foundation/dashboard');
-        } else if (data.lesson) {
-          setLesson(data.lesson);
-          setCompleted(data.completed);
+          return;
+        }
+        
+        setUser(meData.user);
+        
+        // Check if lesson is completed from localStorage
+        const completedLessons = JSON.parse(localStorage.getItem(`completed_lessons_${meData.user.id}`) || '[]');
+        setCompleted(completedLessons.includes(lessonId));
+        
+        // Get lesson content
+        const lessonRes = await fetch(`/api/lessons/${lessonId}`);
+        const lessonData = await lessonRes.json();
+        
+        if (lessonData.lesson) {
+          setLesson(lessonData.lesson);
         } else {
-          toast.error('Failed to load lesson');
           router.push('/foundation/dashboard');
         }
-      } catch (err) {
-        console.error('Error fetching lesson:', err);
-        toast.error('Failed to load lesson');
+      } catch (error) {
+        console.error('Error:', error);
       } finally {
         setLoading(false);
       }
     }
     
-    fetchLesson();
+    fetchData();
   }, [lessonId, router]);
 
-  async function markComplete() {
-    try {
-      const res = await fetch(`/api/lessons/${lessonId}/complete`, { 
-        method: 'POST' 
-      });
-      
-      if (res.ok) {
-        setCompleted(true);
-        toast.success('Lesson marked as complete!');
-      } else {
-        toast.error('Failed to mark lesson as complete');
-      }
-    } catch (error) {
-      toast.error('Network error');
+  const markComplete = () => {
+    if (!user) return;
+    
+    const completedLessons = JSON.parse(localStorage.getItem(`completed_lessons_${user.id}`) || '[]');
+    if (!completedLessons.includes(lessonId)) {
+      completedLessons.push(lessonId);
+      localStorage.setItem(`completed_lessons_${user.id}`, JSON.stringify(completedLessons));
+      setCompleted(true);
+      alert('Lesson marked as complete!');
     }
-  }
+  };
 
   if (loading) {
     return (
       <div className="text-center py-12">
         <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-[#FFB347]"></div>
-        <p className="mt-2 text-gray-600">Loading lesson...</p>
+        <p className="mt-2">Loading lesson...</p>
       </div>
     );
   }
@@ -85,15 +76,8 @@ export default function LessonPage() {
   if (!lesson) {
     return (
       <div className="text-center py-12">
-        <div className="bg-red-50 border border-red-200 rounded-2xl p-8 max-w-md mx-auto">
-          <h2 className="text-2xl font-bold text-red-600 mb-4">Lesson Not Found</h2>
-          <p className="text-gray-700 mb-6">
-            The lesson you're looking for doesn't exist.
-          </p>
-          <Link href="/foundation/dashboard" className="btn-primary inline-block">
-            Back to Dashboard
-          </Link>
-        </div>
+        <p>Lesson not found.</p>
+        <Link href="/foundation/dashboard" className="btn-primary">Back to Dashboard</Link>
       </div>
     );
   }

@@ -1,3 +1,0 @@
-module.exports=[66237,a=>{"use strict";var b=a.i(87924),c=a.i(38246);a.s(["default",0,function(){return(0,b.jsx)("div",{className:"min-h-[60vh] flex items-center justify-center px-4",children:(0,b.jsxs)("div",{className:"text-center max-w-md mx-auto",children:[(0,b.jsx)("div",{className:"text-6xl mb-4",children:"🔍"}),(0,b.jsx)("h1",{className:"text-3xl font-bold text-[#0B1E33] mb-4",children:"Page Not Found"}),(0,b.jsx)("p",{className:"text-gray-600 mb-6",children:"Sorry, we couldn't find the page you're looking for."}),(0,b.jsx)(c.default,{href:"/",className:"btn-primary inline-block",children:"Return Home"})]})})}])}];
-
-//# sourceMappingURL=src_app_not-found_0e04.vr.js.map

@@ -2,12 +2,21 @@
   command = "npm run build"
   publish = ".next"
 
+[build.environment]
+  NODE_VERSION = "20"
+
 [[plugins]]
   package = "@netlify/plugin-nextjs"
 
 [functions]
   node_bundler = "esbuild"
+  
+[[redirects]]
+  from = "/api/*"
+  to = "/.netlify/functions/next/api/:splat"
+  status = 200
 
-[build.environment]
-  NODE_VERSION = "20"
-  NEXT_PUBLIC_BASE_URL = "https://dodoacademy0.netlify.app"
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200

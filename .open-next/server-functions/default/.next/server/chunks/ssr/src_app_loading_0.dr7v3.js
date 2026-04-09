@@ -1,3 +1,0 @@
-module.exports=[16801,a=>{"use strict";var b=a.i(7997);a.s(["default",0,function(){return(0,b.jsx)("div",{className:"min-h-[60vh] flex items-center justify-center",children:(0,b.jsxs)("div",{className:"text-center",children:[(0,b.jsx)("div",{className:"inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-[#FFB347]"}),(0,b.jsx)("p",{className:"mt-4 text-gray-600",children:"Loading..."})]})})}])},18554,a=>{a.n(a.i(16801))}];
-
-//# sourceMappingURL=src_app_loading_0.dr7v3.js.map

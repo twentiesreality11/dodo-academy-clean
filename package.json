@@ -1,35 +1,22 @@
 {
   "name": "dodo-academy",
   "version": "1.0.0",
-  "description": "Cybersecurity training platform for Nigeria's critical infrastructure protection",
-  "private": true,
+  "description": "Cybersecurity training platform",
   "scripts": {
     "dev": "next dev",
-    "seed": "node scripts/seed-neon.js",
     "build": "next build",
-    "start": "next start",
-    "lint": "next lint",
-    "deploy": "opennextjs-cloudflare build && opennextjs-cloudflare deploy",
-    "cf-typegen": "wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts"
+    "start": "next start"
   },
   "dependencies": {
-    "@neondatabase/serverless": "^1.0.2",
-    "@netlify/neon": "^0.1.2",
-    "axios": "^1.6.2",
     "bcryptjs": "^2.4.3",
-    "dotenv": "^17.4.1",
-    "next": "^16.0.0",
-    "nodemailer": "^6.9.7",
-    "react": "^19.0.0",
-    "react-dom": "^19.0.0",
-    "react-hot-toast": "^2.4.1",
-    "sqlite": "^5.1.1",
-    "sqlite3": "^5.1.6",
+    "next": "14.2.35",
+    "nodemailer": "^8.0.5",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
     "uuid": "^9.0.1"
   },
   "devDependencies": {
-    "@opennextjs/cloudflare": "^1.18.0",
-    "@tailwindcss/typography": "^0.5.19",
+    "@netlify/plugin-nextjs": "^5.15.9",
     "autoprefixer": "^10.4.16",
     "postcss": "^8.4.31",
     "tailwindcss": "^3.3.5"
