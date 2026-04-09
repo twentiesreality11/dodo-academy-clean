@@ -1,138 +1,176 @@
-import fs from 'fs';
-import path from 'path';
 import bcrypt from 'bcryptjs';
-import { v4 as uuidv4 } from 'uuid';
+import * as redisDb from './redis';
 
-const dataDir = path.join(process.cwd(), 'data');
-const usersFile = path.join(dataDir, 'users.json');
-const lessonsFile = path.join(dataDir, 'lessons.json');
-const assessmentFile = path.join(dataDir, 'assessment.json');
-const progressFile = path.join(dataDir, 'progress.json');
-const attemptsFile = path.join(dataDir, 'attempts.json');
+// Determine if we're using Redis (production) or local files (development)
+const useRedis = process.env.UPSTASH_REDIS_REST_URL && process.env.NODE_ENV === 'production';
 
-function readJSON(filePath) {
-  try {
-    if (!fs.existsSync(filePath)) return {};
-    return JSON.parse(fs.readFileSync(filePath, 'utf8'));
-  } catch (error) {
-    return {};
-  }
+// Hash password helper
+export async function hashPassword(password) {
+  return bcrypt.hash(password, 10);
 }
-
-function writeJSON(filePath, data) {
-  try {
-    fs.writeFileSync(filePath, JSON.stringify(data, null, 2));
-    return true;
-  } catch (error) {
-    return false;
-  }
-}
-
-// Initialize files
-if (!fs.existsSync(usersFile)) writeJSON(usersFile, { users: [] });
-if (!fs.existsSync(progressFile)) writeJSON(progressFile, { progress: [] });
-if (!fs.existsSync(attemptsFile)) writeJSON(attemptsFile, { attempts: [] });
 
 // ============ USER OPERATIONS ============
-export function getUsers() {
-  const data = readJSON(usersFile);
-  return data.users || [];
+export async function getUserByEmail(email) {
+  if (useRedis) {
+    return await redisDb.getUserByEmail(email);
+  }
+  // Fallback to local JSON (for development)
+  const fs = require('fs');
+  const path = require('path');
+  const dataPath = path.join(process.cwd(), 'data', 'users.json');
+  if (!fs.existsSync(dataPath)) return null;
+  const data = JSON.parse(fs.readFileSync(dataPath, 'utf8'));
+  return (data.users || []).find(u => u.email === email);
 }
 
-export function getUserByEmail(email) {
-  return getUsers().find(u => u.email === email);
-}
-
-export function getUserById(id) {
-  return getUsers().find(u => u.id === id);
+export async function getUserById(id) {
+  if (useRedis) {
+    return await redisDb.getUserById(id);
+  }
+  const fs = require('fs');
+  const path = require('path');
+  const dataPath = path.join(process.cwd(), 'data', 'users.json');
+  if (!fs.existsSync(dataPath)) return null;
+  const data = JSON.parse(fs.readFileSync(dataPath, 'utf8'));
+  return (data.users || []).find(u => u.id === id);
 }
 
 export async function createUser(name, email, password) {
-  const users = getUsers();
-  if (users.find(u => u.email === email)) throw new Error('Email already exists');
-  
   const hashedPassword = await bcrypt.hash(password, 10);
-  const newUser = { id: uuidv4(), name, email, password: hashedPassword, created_at: new Date().toISOString() };
+  
+  if (useRedis) {
+    return await redisDb.createUser(name, email, hashedPassword);
+  }
+  
+  // Fallback to local JSON
+  const fs = require('fs');
+  const path = require('path');
+  const dataPath = path.join(process.cwd(), 'data', 'users.json');
+  let users = [];
+  if (fs.existsSync(dataPath)) {
+    const data = JSON.parse(fs.readFileSync(dataPath, 'utf8'));
+    users = data.users || [];
+  }
+  
+  if (users.find(u => u.email === email)) {
+    throw new Error('Email already exists');
+  }
+  
+  const newUser = {
+    id: `user_${Date.now()}`,
+    name,
+    email,
+    password: hashedPassword,
+    created_at: new Date().toISOString()
+  };
   
   users.push(newUser);
-  writeJSON(usersFile, { users });
+  fs.writeFileSync(dataPath, JSON.stringify({ users }, null, 2));
   
   const { password: _, ...userWithoutPassword } = newUser;
   return userWithoutPassword;
 }
 
 export async function verifyUser(email, password) {
-  const user = getUserByEmail(email);
+  if (useRedis) {
+    return await redisDb.verifyUser(email, password, bcrypt);
+  }
+  
+  const user = await getUserByEmail(email);
   if (!user) return null;
+  
   const isValid = await bcrypt.compare(password, user.password);
   if (!isValid) return null;
+  
   const { password: _, ...userWithoutPassword } = user;
   return userWithoutPassword;
 }
 
 // ============ LESSON OPERATIONS ============
-export function getLessons() {
-  const data = readJSON(lessonsFile);
+export async function getLessons() {
+  if (useRedis) {
+    return await redisDb.getLessons();
+  }
+  const fs = require('fs');
+  const path = require('path');
+  const dataPath = path.join(process.cwd(), 'data', 'lessons.json');
+  const data = JSON.parse(fs.readFileSync(dataPath, 'utf8'));
   return data.lessons || [];
 }
 
-export function getLessonById(id) {
-  return getLessons().find(l => l.id === id);
+export async function getLessonById(id) {
+  const lessons = await getLessons();
+  return lessons.find(l => l.id === id);
 }
 
 // ============ PROGRESS OPERATIONS ============
-export function getProgress(userId) {
-  const data = readJSON(progressFile);
-  return (data.progress || []).filter(p => p.user_id === userId);
+export async function getProgress(userId) {
+  if (useRedis) {
+    return await redisDb.getUserProgress(userId);
+  }
+  const fs = require('fs');
+  const path = require('path');
+  const dataPath = path.join(process.cwd(), 'data', 'progress.json');
+  if (!fs.existsSync(dataPath)) return [];
+  const data = JSON.parse(fs.readFileSync(dataPath, 'utf8'));
+  return (data.progress || []).filter(p => p.user_id === userId).map(p => p.lesson_id);
 }
 
-export function markLessonComplete(userId, lessonId) {
-  const data = readJSON(progressFile);
-  if (!data.progress) data.progress = [];
+export async function markLessonComplete(userId, lessonId) {
+  if (useRedis) {
+    return await redisDb.markLessonComplete(userId, lessonId);
+  }
+  const fs = require('fs');
+  const path = require('path');
+  const dataPath = path.join(process.cwd(), 'data', 'progress.json');
+  let data = { progress: [] };
+  if (fs.existsSync(dataPath)) {
+    data = JSON.parse(fs.readFileSync(dataPath, 'utf8'));
+  }
   
   const existing = data.progress.find(p => p.user_id === userId && p.lesson_id === lessonId);
   if (existing) {
     existing.completed = true;
-    existing.completed_at = new Date().toISOString();
   } else {
-    data.progress.push({ user_id: userId, lesson_id: lessonId, completed: true, completed_at: new Date().toISOString() });
+    data.progress.push({ user_id: userId, lesson_id: lessonId, completed: true });
   }
   
-  return writeJSON(progressFile, data);
-}
-
-// NEW: Update lesson progress (alias for markLessonComplete)
-export function updateLessonProgress(userId, lessonId, completed) {
-  if (completed) {
-    return markLessonComplete(userId, lessonId);
-  }
+  fs.writeFileSync(dataPath, JSON.stringify(data, null, 2));
   return true;
 }
 
 // ============ ASSESSMENT OPERATIONS ============
-export function getAssessmentQuestions() {
-  const data = readJSON(assessmentFile);
+export async function getAssessmentQuestions() {
+  if (useRedis) {
+    return await redisDb.getAssessmentQuestions();
+  }
+  const fs = require('fs');
+  const path = require('path');
+  const dataPath = path.join(process.cwd(), 'data', 'assessment.json');
+  const data = JSON.parse(fs.readFileSync(dataPath, 'utf8'));
   return data.questions || [];
 }
 
-// NEW: Save assessment attempt
-export function saveAssessmentAttempt(userId, score, passed) {
-  const data = readJSON(attemptsFile);
-  if (!data.attempts) data.attempts = [];
-  
-  data.attempts.push({
-    id: uuidv4(),
-    user_id: userId,
-    score: score,
-    passed: passed,
-    created_at: new Date().toISOString()
-  });
-  
-  return writeJSON(attemptsFile, data);
+export async function saveAssessmentAttempt(userId, score, passed) {
+  if (useRedis) {
+    return await redisDb.saveAssessmentAttempt(userId, score, passed);
+  }
+  // For local development, just return true
+  return true;
 }
 
-// NEW: Get user's assessment attempts
-export function getAssessmentAttempts(userId) {
-  const data = readJSON(attemptsFile);
-  return (data.attempts || []).filter(a => a.user_id === userId);
+// Alias for updateLessonProgress
+export async function updateLessonProgress(userId, lessonId, completed) {
+  if (completed) {
+    return await markLessonComplete(userId, lessonId);
+  }
+  return true;
+}
+
+// Check if we're connected to Redis (for debugging)
+export async function isDbConnected() {
+  if (useRedis) {
+    return await redisDb.isRedisConnected();
+  }
+  return true;
 }
