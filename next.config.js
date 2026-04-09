@@ -3,22 +3,12 @@ const nextConfig = {
   images: {
     unoptimized: true,
     remotePatterns: [
-      {
-        protocol: 'https',
-        hostname: 'localhost',
-      },
-      {
-        protocol: 'https',
-        hostname: 'res.cloudinary.com',
-      },
-      {
-        protocol: 'https',
-        hostname: 'vercel.app',
-      },
+      { protocol: 'https', hostname: 'localhost' },
+      { protocol: 'https', hostname: 'res.cloudinary.com' },
     ],
   },
-  trailingSlash: true,
-  serverExternalPackages: ['sqlite3', 'bcryptjs'],
+  trailingSlash: false,  // Set to false for Netlify
+  serverExternalPackages: ['@neondatabase/serverless'],
 };
 
 module.exports = nextConfig;

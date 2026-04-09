@@ -57,3 +57,5 @@ out/
 *secret*
 *.key
 *.pem
+# Local Netlify folder
+.netlify
