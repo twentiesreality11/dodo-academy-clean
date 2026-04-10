@@ -1,10 +1,11 @@
 'use client';
 
-import { useState } from 'react';
+import { Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
+import { useState } from 'react';
 
-export default function RegisterPage() {
+function RegisterForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const redirect = searchParams.get('redirect') || '/foundation/dashboard';
@@ -26,17 +27,6 @@ export default function RegisterPage() {
     e.preventDefault();
     setError('');
     
-    // Validation
-    if (!formData.name.trim()) {
-      setError('Please enter your full name');
-      return;
-    }
-    
-    if (!formData.email.includes('@')) {
-      setError('Please enter a valid email address');
-      return;
-    }
-    
     if (formData.password !== formData.confirmPassword) {
       setError('Passwords do not match');
       return;
@@ -52,12 +42,10 @@ export default function RegisterPage() {
     try {
       const res = await fetch('/api/auth/register', {
         method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
-          name: formData.name.trim(), 
-          email: formData.email.trim().toLowerCase(), 
+          name: formData.name, 
+          email: formData.email, 
           password: formData.password,
           redirect 
         }),
@@ -66,104 +54,55 @@ export default function RegisterPage() {
       const data = await res.json();
       
       if (res.ok) {
-        // Redirect to dashboard
         router.push(data.redirect);
       } else {
         setError(data.error || 'Registration failed');
       }
     } catch (err) {
-      console.error('Registration error:', err);
       setError('Network error. Please try again.');
-    } finally {
-      setLoading(false);
     }
+    
+    setLoading(false);
   };
 
   return (
     <div className="max-w-md mx-auto">
       <div className="bg-white rounded-2xl p-8 shadow-md">
         <h1 className="text-3xl font-bold text-center mb-6">Create Account</h1>
-        
-        {error && (
-          <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6 text-red-700">
-            ❌ {error}
-          </div>
-        )}
-        
+        {error && <div className="bg-red-100 text-red-700 p-3 rounded-lg mb-4">{error}</div>}
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block font-semibold mb-2">Full Name *</label>
-            <input 
-              type="text" 
-              name="name" 
-              value={formData.name} 
-              onChange={handleChange} 
-              required 
-              className="input-field" 
-              placeholder="John Doe"
-              disabled={loading}
-            />
+            <label className="block font-semibold mb-2">Full Name</label>
+            <input type="text" name="name" value={formData.name} onChange={handleChange} required className="input-field" />
           </div>
-          
           <div>
-            <label className="block font-semibold mb-2">Email Address *</label>
-            <input 
-              type="email" 
-              name="email" 
-              value={formData.email} 
-              onChange={handleChange} 
-              required 
-              className="input-field" 
-              placeholder="you@example.com"
-              disabled={loading}
-            />
+            <label className="block font-semibold mb-2">Email</label>
+            <input type="email" name="email" value={formData.email} onChange={handleChange} required className="input-field" />
           </div>
-          
           <div>
-            <label className="block font-semibold mb-2">Password *</label>
-            <input 
-              type="password" 
-              name="password" 
-              value={formData.password} 
-              onChange={handleChange} 
-              required 
-              className="input-field" 
-              placeholder="••••••••"
-              disabled={loading}
-            />
-            <p className="text-xs text-gray-500 mt-1">Minimum 6 characters</p>
+            <label className="block font-semibold mb-2">Password</label>
+            <input type="password" name="password" value={formData.password} onChange={handleChange} required className="input-field" />
           </div>
-          
           <div>
-            <label className="block font-semibold mb-2">Confirm Password *</label>
-            <input 
-              type="password" 
-              name="confirmPassword" 
-              value={formData.confirmPassword} 
-              onChange={handleChange} 
-              required 
-              className="input-field" 
-              placeholder="••••••••"
-              disabled={loading}
-            />
+            <label className="block font-semibold mb-2">Confirm Password</label>
+            <input type="password" name="confirmPassword" value={formData.confirmPassword} onChange={handleChange} required className="input-field" />
           </div>
-          
-          <button 
-            type="submit" 
-            disabled={loading} 
-            className="btn-primary w-full"
-          >
+          <button type="submit" disabled={loading} className="btn-primary w-full">
             {loading ? 'Creating account...' : 'Register'}
           </button>
         </form>
-        
-        <p className="text-center mt-6 text-gray-600">
-          Already have an account?{' '}
-          <Link href={`/login?redirect=${encodeURIComponent(redirect)}`} className="text-[#FFB347] hover:underline">
-            Login here
-          </Link>
+        <p className="text-center mt-6">
+          Already have an account? <Link href={`/login?redirect=${encodeURIComponent(redirect)}`} className="text-[#FFB347] hover:underline">Login</Link>
         </p>
       </div>
     </div>
+  );
+}
+
+export default function RegisterPage() {
+  return (
+    <Suspense fallback={<div className="text-center py-12">Loading...</div>}>
+      <RegisterForm />
+    </Suspense>
   );
 }

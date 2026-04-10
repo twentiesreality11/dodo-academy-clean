@@ -5,9 +5,12 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "start": "next start"
+    "start": "next start",
+    "netlify:build": "npm run build",
+    "netlify:dev": "netlify dev"
   },
   "dependencies": {
+    "@neondatabase/serverless": "^1.0.2",
     "@upstash/redis": "^1.37.0",
     "bcryptjs": "^2.4.3",
     "next": "14.2.35",
@@ -15,13 +18,6 @@
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "uuid": "^9.0.1"
-  },
-  "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
-    "netlify:build": "npm run build",
-    "netlify:dev": "netlify dev"
   },
   "devDependencies": {
     "@netlify/plugin-nextjs": "^5.15.9",

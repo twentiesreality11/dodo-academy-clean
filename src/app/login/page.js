@@ -1,10 +1,11 @@
 'use client';
 
-import { useState } from 'react';
+import { Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
+import { useState } from 'react';
 
-export default function LoginPage() {
+function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const redirect = searchParams.get('redirect') || '/foundation/dashboard';
@@ -47,58 +48,32 @@ export default function LoginPage() {
     <div className="max-w-md mx-auto">
       <div className="bg-white rounded-2xl p-8 shadow-md">
         <h1 className="text-3xl font-bold text-center mb-6">Welcome Back</h1>
-        
-        {error && (
-          <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6 text-red-700">
-            ❌ {error}
-          </div>
-        )}
-        
+        {error && <div className="bg-red-100 text-red-700 p-3 rounded-lg mb-4">{error}</div>}
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="block font-semibold mb-2">Email</label>
-            <input 
-              type="email" 
-              name="email" 
-              value={formData.email} 
-              onChange={handleChange} 
-              required 
-              className="input-field" 
-              placeholder="you@example.com"
-              disabled={loading}
-            />
+            <input type="email" name="email" value={formData.email} onChange={handleChange} required className="input-field" />
           </div>
-          
           <div>
             <label className="block font-semibold mb-2">Password</label>
-            <input 
-              type="password" 
-              name="password" 
-              value={formData.password} 
-              onChange={handleChange} 
-              required 
-              className="input-field" 
-              placeholder="••••••••"
-              disabled={loading}
-            />
+            <input type="password" name="password" value={formData.password} onChange={handleChange} required className="input-field" />
           </div>
-          
-          <button 
-            type="submit" 
-            disabled={loading} 
-            className="btn-primary w-full"
-          >
+          <button type="submit" disabled={loading} className="btn-primary w-full">
             {loading ? 'Logging in...' : 'Login'}
           </button>
         </form>
-        
-        <p className="text-center mt-6 text-gray-600">
-          Don't have an account?{' '}
-          <Link href={`/register?redirect=${encodeURIComponent(redirect)}`} className="text-[#FFB347] hover:underline">
-            Register here
-          </Link>
+        <p className="text-center mt-6">
+          Don't have an account? <Link href={`/register?redirect=${encodeURIComponent(redirect)}`} className="text-[#FFB347] hover:underline">Register</Link>
         </p>
       </div>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<div className="text-center py-12">Loading...</div>}>
+      <LoginForm />
+    </Suspense>
   );
 }
