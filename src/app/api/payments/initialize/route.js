@@ -31,9 +31,12 @@ export async function POST(request) {
     
     const user = users[0];
     const reference = `DODO-${uuidv4()}`;
-    const amount = 5000000;
+    const amount = 5000000; // ₦50,000 in kobo
     
-    // Use native fetch instead of axios
+    // Use the payment-success page as callback URL
+    const callbackUrl = `${process.env.NEXT_PUBLIC_BASE_URL}/payment-success?reference=${reference}`;
+    console.log('Callback URL:', callbackUrl);
+    
     const response = await fetch('https://api.paystack.co/transaction/initialize', {
       method: 'POST',
       headers: {
@@ -44,22 +47,25 @@ export async function POST(request) {
         email: user.email,
         amount: amount,
         reference: reference,
-        callback_url: `${process.env.NEXT_PUBLIC_BASE_URL}/api/payments/verify`,
+        callback_url: callbackUrl,
       }),
     });
     
     const data = await response.json();
     
     if (data.status) {
+      // Store pending payment
       await sql`
         INSERT INTO payments (id, user_id, reference, amount, status, course_type)
         VALUES (${uuidv4()}, ${user.id}, ${reference}, ${amount}, 'pending', 'foundation')
       `;
       
+      console.log('Payment initialized, redirecting to:', data.data.authorization_url);
       return NextResponse.json({ 
         authorization_url: data.data.authorization_url 
       });
     } else {
+      console.error('Paystack error:', data);
       return NextResponse.json(
         { error: data.message || 'Payment initiation failed' },
         { status: 400 }
