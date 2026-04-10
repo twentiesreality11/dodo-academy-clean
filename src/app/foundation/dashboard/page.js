@@ -10,29 +10,33 @@ export default function DashboardPage() {
   const [lessons, setLessons] = useState([]);
   const [loading, setLoading] = useState(true);
   const [hasPaid, setHasPaid] = useState(false);
-  const [checkingPayment, setCheckingPayment] = useState(true);
 
   useEffect(() => {
     async function fetchData() {
       try {
-        // Get user
+        // Step 1: Get user
+        console.log('Fetching user...');
         const meRes = await fetch('/api/auth/me');
         const meData = await meRes.json();
         
         if (!meData.user) {
+          console.log('No user, redirecting to login');
           router.push('/login?redirect=/foundation/dashboard');
           return;
         }
         
         setUser(meData.user);
+        console.log('User found:', meData.user.email);
         
-        // Check if user has paid
+        // Step 2: Check payment status
+        console.log('Checking payment status...');
         const paymentRes = await fetch('/api/payments/status');
         const paymentData = await paymentRes.json();
         
-        setCheckingPayment(false);
+        console.log('Payment status:', paymentData);
         
         if (!paymentData.hasPaid) {
+          console.log('User has not paid');
           setHasPaid(false);
           setLoading(false);
           return;
@@ -40,13 +44,28 @@ export default function DashboardPage() {
         
         setHasPaid(true);
         
-        // Get lessons
+        // Step 3: Fetch lessons
+        console.log('Fetching lessons...');
         const lessonsRes = await fetch('/api/lessons');
-        const lessonsData = await lessonsRes.json();
         
-        if (lessonsData.lessons) {
+        if (!lessonsRes.ok) {
+          console.error('Lessons API error:', lessonsRes.status);
+          setLessons([]);
+          setLoading(false);
+          return;
+        }
+        
+        const lessonsData = await lessonsRes.json();
+        console.log('Lessons received:', lessonsData.lessons?.length || 0);
+        
+        if (lessonsData.lessons && lessonsData.lessons.length > 0) {
           // Get completed lessons from localStorage
-          const completedLessons = JSON.parse(localStorage.getItem(`completed_lessons_${meData.user.id}`) || '[]');
+          let completedLessons = [];
+          try {
+            completedLessons = JSON.parse(localStorage.getItem(`completed_lessons_${meData.user.id}`) || '[]');
+          } catch (e) {
+            console.error('Error reading localStorage:', e);
+          }
           
           const lessonsWithProgress = lessonsData.lessons.map(lesson => ({
             ...lesson,
@@ -54,9 +73,15 @@ export default function DashboardPage() {
           }));
           
           setLessons(lessonsWithProgress);
+        } else {
+          console.warn('No lessons returned from API');
+          setLessons([]);
         }
       } catch (error) {
-        console.error('Error:', error);
+        console.error('Dashboard error:', error);
+        // Show error but don't crash
+        setHasPaid(false);
+        setLessons([]);
       } finally {
         setLoading(false);
       }
@@ -68,16 +93,17 @@ export default function DashboardPage() {
   const completedCount = lessons.filter(l => l.completed).length;
   const progress = lessons.length > 0 ? (completedCount / lessons.length) * 100 : 0;
 
-  if (loading || checkingPayment) {
+  // Show loading state
+  if (loading) {
     return (
       <div className="text-center py-12">
         <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-[#FFB347]"></div>
-        <p className="mt-2">Loading dashboard...</p>
+        <p className="mt-2 text-gray-600">Loading dashboard...</p>
       </div>
     );
   }
 
-  // If user hasn't paid, show payment required message
+  // Show payment required if not paid
   if (!hasPaid) {
     return (
       <div className="max-w-2xl mx-auto text-center">
@@ -98,6 +124,7 @@ export default function DashboardPage() {
     );
   }
 
+  // Show lessons if paid
   return (
     <div>
       <h1 className="text-3xl font-bold mb-2">Welcome, {user?.name}!</h1>
@@ -116,33 +143,39 @@ export default function DashboardPage() {
       </div>
 
       {/* Lessons List */}
-      <div className="space-y-3">
-        {lessons.map((lesson, index) => (
-          <div key={lesson.id} className="bg-white rounded-xl p-4 shadow-sm flex justify-between items-center">
-            <div className="flex items-center gap-4">
-              <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center font-semibold">
-                {index + 1}
+      {lessons.length === 0 ? (
+        <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-6 text-center">
+          <p className="text-yellow-700">No lessons found. Please contact support.</p>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {lessons.map((lesson, index) => (
+            <div key={lesson.id} className="bg-white rounded-xl p-4 shadow-sm flex justify-between items-center">
+              <div className="flex items-center gap-4">
+                <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center font-semibold">
+                  {index + 1}
+                </div>
+                <Link 
+                  href={`/foundation/lesson/${lesson.id}`} 
+                  className="text-lg font-semibold text-[#0B1E33] hover:text-[#FFB347] transition"
+                >
+                  {lesson.title}
+                </Link>
               </div>
-              <Link 
-                href={`/foundation/lesson/${lesson.id}`} 
-                className="text-lg font-semibold text-[#0B1E33] hover:text-[#FFB347] transition"
-              >
-                {lesson.title}
-              </Link>
+              {lesson.completed ? (
+                <span className="bg-green-100 text-green-700 px-3 py-1 rounded-full text-sm">✓ Completed</span>
+              ) : (
+                <Link 
+                  href={`/foundation/lesson/${lesson.id}`}
+                  className="btn-outline text-sm py-1 px-4"
+                >
+                  Start
+                </Link>
+              )}
             </div>
-            {lesson.completed ? (
-              <span className="bg-green-100 text-green-700 px-3 py-1 rounded-full text-sm">✓ Completed</span>
-            ) : (
-              <Link 
-                href={`/foundation/lesson/${lesson.id}`}
-                className="btn-outline text-sm py-1 px-4"
-              >
-                Start
-              </Link>
-            )}
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
