@@ -4,9 +4,7 @@ const nextConfig = {
     unoptimized: true,
   },
   trailingSlash: false,
-  // Disable API routes from being handled by Next.js
-  rewrites: async () => [],
-  redirects: async () => [],
+  // No Netlify-specific settings
 };
 
 module.exports = nextConfig;
