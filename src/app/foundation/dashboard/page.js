@@ -9,10 +9,13 @@ export default function DashboardPage() {
   const [user, setUser] = useState(null);
   const [lessons, setLessons] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [hasPaid, setHasPaid] = useState(false);
+  const [checkingPayment, setCheckingPayment] = useState(true);
 
   useEffect(() => {
     async function fetchData() {
       try {
+        // Get user
         const meRes = await fetch('/api/auth/me');
         const meData = await meRes.json();
         
@@ -23,7 +26,21 @@ export default function DashboardPage() {
         
         setUser(meData.user);
         
-        // Get lessons from API
+        // Check if user has paid
+        const paymentRes = await fetch('/api/payments/status');
+        const paymentData = await paymentRes.json();
+        
+        setCheckingPayment(false);
+        
+        if (!paymentData.hasPaid) {
+          setHasPaid(false);
+          setLoading(false);
+          return;
+        }
+        
+        setHasPaid(true);
+        
+        // Get lessons
         const lessonsRes = await fetch('/api/lessons');
         const lessonsData = await lessonsRes.json();
         
@@ -31,7 +48,6 @@ export default function DashboardPage() {
           // Get completed lessons from localStorage
           const completedLessons = JSON.parse(localStorage.getItem(`completed_lessons_${meData.user.id}`) || '[]');
           
-          // Mark lessons as completed based on localStorage
           const lessonsWithProgress = lessonsData.lessons.map(lesson => ({
             ...lesson,
             completed: completedLessons.includes(lesson.id)
@@ -52,11 +68,32 @@ export default function DashboardPage() {
   const completedCount = lessons.filter(l => l.completed).length;
   const progress = lessons.length > 0 ? (completedCount / lessons.length) * 100 : 0;
 
-  if (loading) {
+  if (loading || checkingPayment) {
     return (
       <div className="text-center py-12">
         <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-[#FFB347]"></div>
         <p className="mt-2">Loading dashboard...</p>
+      </div>
+    );
+  }
+
+  // If user hasn't paid, show payment required message
+  if (!hasPaid) {
+    return (
+      <div className="max-w-2xl mx-auto text-center">
+        <div className="bg-yellow-50 border border-yellow-200 rounded-2xl p-8 mb-6">
+          <div className="text-5xl mb-4">🔒</div>
+          <h1 className="text-2xl font-bold text-yellow-800 mb-4">Payment Required</h1>
+          <p className="text-gray-700 mb-6">
+            You need to purchase the Cybersecurity Foundation course to access the lessons.
+          </p>
+          <Link href="/foundation/checkout" className="btn-primary inline-block">
+            Purchase Course - ₦50,000
+          </Link>
+        </div>
+        <Link href="/foundation" className="text-[#FFB347] hover:underline">
+          ← Back to Course Info
+        </Link>
       </div>
     );
   }
@@ -66,6 +103,7 @@ export default function DashboardPage() {
       <h1 className="text-3xl font-bold mb-2">Welcome, {user?.name}!</h1>
       <p className="text-gray-600 mb-8">Track your progress through the Cybersecurity Foundation course.</p>
 
+      {/* Progress Bar */}
       <div className="bg-white rounded-2xl p-6 shadow-md mb-8">
         <div className="flex justify-between items-center mb-2">
           <span className="font-semibold">Course Progress</span>
@@ -77,6 +115,7 @@ export default function DashboardPage() {
         <p className="text-sm text-gray-500 mt-2">{completedCount} of {lessons.length} lessons completed</p>
       </div>
 
+      {/* Lessons List */}
       <div className="space-y-3">
         {lessons.map((lesson, index) => (
           <div key={lesson.id} className="bg-white rounded-xl p-4 shadow-sm flex justify-between items-center">
@@ -84,7 +123,6 @@ export default function DashboardPage() {
               <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center font-semibold">
                 {index + 1}
               </div>
-              {/* REMOVED the onClick from here - ONLY navigation */}
               <Link 
                 href={`/foundation/lesson/${lesson.id}`} 
                 className="text-lg font-semibold text-[#0B1E33] hover:text-[#FFB347] transition"
@@ -105,23 +143,6 @@ export default function DashboardPage() {
           </div>
         ))}
       </div>
-      
-      {/* Show assessment results if available */}
-      {typeof window !== 'undefined' && (() => {
-        const latestResult = localStorage.getItem('latest_assessment');
-        if (latestResult) {
-          const result = JSON.parse(latestResult);
-          if (result.passed && result.userId === user?.id) {
-            return (
-              <div className="mt-8 bg-green-50 border border-green-200 rounded-xl p-4">
-                <p className="text-green-700">🎉 You passed the final assessment! Score: {result.score}/{result.total}</p>
-                <Link href="/foundation/result?passed=true" className="text-green-600 underline text-sm">View Certificate</Link>
-              </div>
-            );
-          }
-        }
-        return null;
-      })()}
     </div>
   );
 }
