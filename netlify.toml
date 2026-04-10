@@ -1,11 +1,16 @@
 [build]
   command = "npm run build"
   publish = ".next"
-  functions = "netlify/functions"
 
 [build.environment]
   NODE_VERSION = "20"
 
+# Disable automatic Next.js function
+[functions]
+  node_bundler = "esbuild"
+  directory = "netlify/functions"
+
+# Explicitly handle API routes with custom functions
 [[redirects]]
   from = "/api/auth/register"
   to = "/.netlify/functions/register"
@@ -30,6 +35,7 @@
   status = 200
   force = true
 
+# SPA fallback
 [[redirects]]
   from = "/*"
   to = "/index.html"

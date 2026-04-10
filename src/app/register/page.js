@@ -50,7 +50,7 @@ function RegisterForm() {
     setLoading(true);
     
     try {
-      // Call Netlify Function directly
+      // Call Netlify Function directly (not through API route)
       const res = await fetch('/.netlify/functions/register', {
         method: 'POST',
         headers: { 
@@ -68,14 +68,14 @@ function RegisterForm() {
       console.log('Response:', { status: res.status, data });
       
       if (res.ok) {
-        // Redirect to dashboard
+        // Success - redirect to dashboard
         window.location.href = data.redirect;
       } else {
         setError(data.error || 'Registration failed. Please try again.');
       }
     } catch (err) {
       console.error('Fetch error:', err);
-      setError('Network error. Please check your connection and try again.');
+      setError('Network error: ' + err.message);
     } finally {
       setLoading(false);
     }
