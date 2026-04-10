@@ -15,6 +15,7 @@ function LoginForm() {
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
+    setError('');
   };
 
   const handleSubmit = async (e) => {
@@ -23,7 +24,7 @@ function LoginForm() {
     setLoading(true);
     
     try {
-      const res = await fetch('/api/auth/login', {
+      const res = await fetch('/.netlify/functions/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ...formData, redirect }),
@@ -32,7 +33,7 @@ function LoginForm() {
       const data = await res.json();
       
       if (res.ok) {
-        router.push(data.redirect);
+        window.location.href = data.redirect;
       } else {
         setError(data.error || 'Login failed');
       }
