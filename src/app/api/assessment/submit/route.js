@@ -1,3 +1,7 @@
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
+
+
 import { NextResponse } from 'next/server';
 import { getAssessmentQuestions, getUserById, saveAssessmentAttempt, updateLessonProgress } from '@/lib/db';
 import { sendAssessmentPassedEmail, sendAssessmentFailedEmail } from '@/lib/email';

@@ -1,6 +1,11 @@
 import { NextResponse } from 'next/server';
 import { markLessonComplete, getUserById } from '@/lib/db';
 
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
+
+
+
 export async function POST(request, { params }) {
   const sessionId = request.cookies.get('session')?.value;
   if (!sessionId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });

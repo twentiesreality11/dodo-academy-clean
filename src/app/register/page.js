@@ -3,9 +3,8 @@
 import { useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import SearchParamsWrapper from '@/components/SearchParamsWrapper';
 
-function RegisterForm() {
+export default function RegisterPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const redirect = searchParams.get('redirect') || '/foundation/dashboard';
@@ -27,6 +26,7 @@ function RegisterForm() {
     e.preventDefault();
     setError('');
     
+    // Validation
     if (!formData.name.trim()) {
       setError('Please enter your full name');
       return;
@@ -50,8 +50,7 @@ function RegisterForm() {
     setLoading(true);
     
     try {
-      // Call Netlify Function directly (not through API route)
-      const res = await fetch('/.netlify/functions/register', {
+      const res = await fetch('/api/auth/register', {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
@@ -65,17 +64,16 @@ function RegisterForm() {
       });
       
       const data = await res.json();
-      console.log('Response:', { status: res.status, data });
       
       if (res.ok) {
-        // Success - redirect to dashboard
-        window.location.href = data.redirect;
+        // Redirect to dashboard
+        router.push(data.redirect);
       } else {
-        setError(data.error || 'Registration failed. Please try again.');
+        setError(data.error || 'Registration failed');
       }
     } catch (err) {
-      console.error('Fetch error:', err);
-      setError('Network error: ' + err.message);
+      console.error('Registration error:', err);
+      setError('Network error. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -167,13 +165,5 @@ function RegisterForm() {
         </p>
       </div>
     </div>
-  );
-}
-
-export default function RegisterPage() {
-  return (
-    <SearchParamsWrapper>
-      <RegisterForm />
-    </SearchParamsWrapper>
   );
 }
