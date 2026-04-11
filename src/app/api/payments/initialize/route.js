@@ -34,7 +34,7 @@ export async function POST(request) {
     const amount = 5000000; // ₦50,000 in kobo
     
     // Use the payment-success page as callback URL
-    const callbackUrl = `${process.env.NEXT_PUBLIC_BASE_URL}/payment-success?reference=${reference}`;
+    const callbackUrl = `${process.env.NEXT_PUBLIC_BASE_URL}/api/payments/verify`;
     console.log('Callback URL:', callbackUrl);
     
     const response = await fetch('https://api.paystack.co/transaction/initialize', {
