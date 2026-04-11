@@ -19,7 +19,6 @@ export async function GET(request) {
   
   try {
     // 1. Verify with Paystack
-    console.log('Verifying with Paystack...');
     const paystackRes = await fetch(`https://api.paystack.co/transaction/verify/${reference}`, {
       headers: {
         'Authorization': `Bearer ${process.env.PAYSTACK_SECRET_KEY}`,
@@ -27,62 +26,61 @@ export async function GET(request) {
     });
     
     const paystackData = await paystackRes.json();
-    console.log('Paystack verification:', paystackData.status, paystackData.data?.status);
+    console.log('Paystack response:', JSON.stringify(paystackData, null, 2));
     
     if (!paystackData.status || paystackData.data?.status !== 'success') {
       console.log('Payment verification failed');
       return NextResponse.redirect(new URL('/foundation/cancel', request.url));
     }
     
-    // 2. Get user from payment record or session
+    // 2. Get user from cookie
     const cookieStore = cookies();
-    const sessionId = cookieStore.get('session')?.value;
-    
+    let sessionId = cookieStore.get('session')?.value;
     console.log('Session ID from cookie:', sessionId);
     
+    if (!sessionId) {
+      console.log('No session cookie found');
+      return NextResponse.redirect(new URL('/login?redirect=/foundation/dashboard', request.url));
+    }
+    
     if (!process.env.POSTGRES_URL) {
-      console.log('No database, but payment successful');
-      // Still redirect to dashboard, but user won't have access
-      const response = NextResponse.redirect(new URL('/foundation/dashboard', request.url));
-      return response;
+      console.log('No database URL');
+      return NextResponse.redirect(new URL('/foundation/dashboard', request.url));
     }
     
     const sql = neon(process.env.POSTGRES_URL);
     
-    // Find or create payment record
-    let paymentRecord = await sql`
-      SELECT id, user_id, status 
-      FROM payments 
-      WHERE reference = ${reference}
+    // 3. Check if payment already recorded
+    const existingPayment = await sql`
+      SELECT id, status FROM payments WHERE reference = ${reference}
     `;
     
-    let userId = sessionId;
-    
-    if (paymentRecord && paymentRecord.length > 0) {
-      userId = paymentRecord[0].user_id;
-      console.log('Found existing payment record for user:', userId);
+    if (existingPayment && existingPayment.length > 0) {
+      console.log('Payment already exists, status:', existingPayment[0].status);
       
-      // Update payment status
+      if (existingPayment[0].status === 'success') {
+        // Already successful, just redirect
+        return NextResponse.redirect(new URL('/foundation/dashboard', request.url));
+      }
+      
+      // Update existing payment
       await sql`
         UPDATE payments 
         SET status = 'success' 
         WHERE reference = ${reference}
       `;
-      console.log('Payment status updated to success');
-    } else if (sessionId) {
-      // Create payment record
+      console.log('Updated existing payment to success');
+    } else {
+      // Create new payment record
       console.log('Creating new payment record for user:', sessionId);
       await sql`
         INSERT INTO payments (id, user_id, reference, amount, status, course_type, created_at)
         VALUES (gen_random_uuid(), ${sessionId}, ${reference}, ${paystackData.data.amount}, 'success', 'foundation', NOW())
       `;
-      userId = sessionId;
-    } else {
-      console.log('No user session found');
-      return NextResponse.redirect(new URL('/login?redirect=/foundation/dashboard', request.url));
+      console.log('Created new payment record');
     }
     
-    // 3. Initialize user progress if not exists
+    // 4. Initialize progress for lessons
     try {
       const lessons = await sql`SELECT id FROM lessons`;
       console.log(`Found ${lessons.length} lessons`);
@@ -90,30 +88,28 @@ export async function GET(request) {
       for (const lesson of lessons) {
         await sql`
           INSERT INTO progress (user_id, lesson_id, completed) 
-          VALUES (${userId}, ${lesson.id}, false)
+          VALUES (${sessionId}, ${lesson.id}, false)
           ON CONFLICT (user_id, lesson_id) DO NOTHING
         `;
       }
-      console.log('Progress initialized for user');
+      console.log('Progress initialized');
     } catch (progressError) {
-      console.log('Progress init error:', progressError.message);
+      console.log('Progress init error (non-critical):', progressError.message);
     }
     
-    console.log('Payment verified, redirecting to dashboard');
+    console.log('Payment verified successfully, redirecting to dashboard');
     
-    // Create response with refreshed session
-    const response = NextResponse.redirect(new URL('/foundation/dashboard', request.url));
+    // 5. Redirect to dashboard with a cache-busting parameter
+    const response = NextResponse.redirect(new URL('/foundation/dashboard?paid=true&t=' + Date.now(), request.url));
     
-    // Ensure session cookie is set
-    if (sessionId) {
-      response.cookies.set('session', sessionId, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax',
-        path: '/',
-        maxAge: 60 * 60 * 24 * 7,
-      });
-    }
+    // Refresh the session cookie
+    response.cookies.set('session', sessionId, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      path: '/',
+      maxAge: 60 * 60 * 24 * 7,
+    });
     
     return response;
     

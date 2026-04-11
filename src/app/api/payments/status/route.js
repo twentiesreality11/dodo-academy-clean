@@ -8,7 +8,8 @@ export async function GET(request) {
   try {
     const sessionId = request.cookies.get('session')?.value;
     
-    console.log('Payment status check - Session ID:', sessionId);
+    console.log('=== PAYMENT STATUS CHECK ===');
+    console.log('Session ID:', sessionId);
     
     if (!sessionId) {
       console.log('No session, returning hasPaid: false');
@@ -37,7 +38,7 @@ export async function GET(request) {
     console.log('Payment status result:', hasPaid);
     
     if (hasPaid) {
-      console.log('Payment found:', payments[0].reference);
+      console.log('Found payment:', payments[0].reference);
     }
     
     return NextResponse.json({ hasPaid });
