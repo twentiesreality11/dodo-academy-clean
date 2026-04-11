@@ -8,11 +8,9 @@ export async function GET(request) {
   try {
     const sessionId = request.cookies.get('session')?.value;
     
-    console.log('=== PAYMENT STATUS CHECK ===');
-    console.log('Session ID:', sessionId);
+    console.log('Payment status check - Session:', sessionId);
     
     if (!sessionId) {
-      console.log('No session, returning hasPaid: false');
       return NextResponse.json({ hasPaid: false });
     }
     
@@ -24,22 +22,17 @@ export async function GET(request) {
     const sql = neon(process.env.POSTGRES_URL);
     
     // Check for successful payment
-    const payments = await sql`
-      SELECT id, status, reference, created_at 
-      FROM payments 
-      WHERE user_id = ${sessionId} 
-        AND course_type = 'foundation' 
-        AND status = 'success'
-      ORDER BY created_at DESC 
-      LIMIT 1
+    const result = await sql`
+      SELECT EXISTS (
+        SELECT 1 FROM payments 
+        WHERE user_id = ${sessionId} 
+          AND course_type = 'foundation' 
+          AND status = 'success'
+      ) as has_paid
     `;
     
-    const hasPaid = payments && payments.length > 0;
-    console.log('Payment status result:', hasPaid);
-    
-    if (hasPaid) {
-      console.log('Found payment:', payments[0].reference);
-    }
+    const hasPaid = result[0]?.has_paid || false;
+    console.log('Payment status:', hasPaid);
     
     return NextResponse.json({ hasPaid });
   } catch (error) {
