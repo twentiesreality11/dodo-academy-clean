@@ -13,35 +13,36 @@ export default function AssessmentPage() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
 
-  // Fetch user and questions on page load
   useEffect(() => {
     async function fetchData() {
       try {
-        // Get current user
-        const userRes = await fetch('/api/auth/me');
-        const userData = await userRes.json();
+        // Check user
+        const meRes = await fetch('/api/auth/me');
+        const meData = await meRes.json();
         
-        if (!userData.user) {
+        if (!meData.user) {
           router.push('/login?redirect=/foundation/assessment');
           return;
         }
         
-        setUser(userData.user);
+        setUser(meData.user);
         
-        // Get assessment questions
+        // Fetch questions
         const questionsRes = await fetch('/api/assessment/questions');
         const questionsData = await questionsRes.json();
         
-        if (questionsRes.ok && questionsData.questions) {
+        if (!questionsRes.ok) {
+          setError(questionsData.error || 'Failed to load questions');
+        } else if (questionsData.questions && questionsData.questions.length > 0) {
           setQuestions(questionsData.questions);
-          // Initialize answers object
+          // Initialize answers
           const initialAnswers = {};
           questionsData.questions.forEach((_, index) => {
             initialAnswers[`q${index}`] = '';
           });
           setAnswers(initialAnswers);
         } else {
-          setError('Failed to load assessment questions');
+          setError('No assessment questions found. Please contact support.');
         }
       } catch (err) {
         console.error('Error fetching data:', err);
@@ -65,7 +66,6 @@ export default function AssessmentPage() {
     e.preventDefault();
     setError('');
     
-    // Check if all questions are answered
     const answeredCount = Object.values(answers).filter(a => a !== '' && a !== undefined).length;
     
     if (answeredCount !== questions.length) {
@@ -79,10 +79,7 @@ export default function AssessmentPage() {
       const res = await fetch('/api/assessment/submit', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          answers, 
-          userId: user?.id 
-        }),
+        body: JSON.stringify({ answers, userId: user?.id }),
       });
       
       const data = await res.json();
@@ -104,13 +101,37 @@ export default function AssessmentPage() {
     return (
       <div className="text-center py-12">
         <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-[#FFB347]"></div>
-        <p className="mt-2 text-gray-600">Loading assessment...</p>
+        <p className="mt-2">Loading assessment...</p>
       </div>
     );
   }
 
-  if (!user) {
-    return null; // Will redirect in useEffect
+  if (error) {
+    return (
+      <div className="text-center py-12">
+        <div className="bg-red-50 border border-red-200 rounded-2xl p-8 max-w-md mx-auto">
+          <h2 className="text-xl font-bold text-red-700 mb-4">Error</h2>
+          <p className="text-gray-700 mb-6">{error}</p>
+          <button onClick={() => window.location.reload()} className="btn-primary">
+            Try Again
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (questions.length === 0) {
+    return (
+      <div className="text-center py-12">
+        <div className="bg-yellow-50 border border-yellow-200 rounded-2xl p-8 max-w-md mx-auto">
+          <h2 className="text-xl font-bold text-yellow-700 mb-4">No Questions Available</h2>
+          <p className="text-gray-700 mb-6">Please contact support to set up the assessment.</p>
+          <Link href="/foundation/dashboard" className="btn-primary">
+            Back to Dashboard
+          </Link>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -143,7 +164,7 @@ export default function AssessmentPage() {
           }
           
           return (
-            <div key={q.id || index} className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+            <div key={q.id} className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
               <p className="font-semibold mb-4 text-lg">
                 {index + 1}. {q.question}
               </p>
@@ -159,7 +180,7 @@ export default function AssessmentPage() {
                       value={optIndex}
                       checked={answers[`q${index}`] === String(optIndex)}
                       onChange={() => handleAnswerChange(index, String(optIndex))}
-                      className="w-4 h-4 text-[#FFB347] focus:ring-[#FFB347] focus:ring-offset-0"
+                      className="w-4 h-4 text-[#FFB347]"
                     />
                     <span className="text-gray-700">{option}</span>
                   </label>
