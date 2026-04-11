@@ -21,20 +21,27 @@ export async function POST(request) {
     const sql = neon(process.env.POSTGRES_URL);
     
     // Check if user exists
-    const users = await sql`SELECT id FROM users WHERE id = ${sessionId}`;
+    const users = await sql`
+      SELECT id FROM users WHERE id = ${sessionId}
+    `;
+    
     if (users.length === 0) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
     
-    // Add payment record
+    console.log('User found, adding payment...');
+    
+    // Add payment record - using proper parameter syntax
     await sql`
       INSERT INTO payments (id, user_id, reference, amount, status, course_type, created_at)
-      VALUES (gen_random_uuid(), ${sessionId}, 'FIX-${Date.now()}', 5000000, 'success', 'foundation', NOW())
-      ON CONFLICT (user_id, course_type) DO UPDATE SET status = 'success'
+      VALUES (gen_random_uuid(), ${sessionId}, ${'FIX-' + Date.now()}, 5000000, 'success', 'foundation', NOW())
     `;
+    
+    console.log('Payment added, adding progress...');
     
     // Add progress for lessons
     const lessons = await sql`SELECT id FROM lessons`;
+    
     for (const lesson of lessons) {
       await sql`
         INSERT INTO progress (user_id, lesson_id, completed) 
@@ -43,7 +50,10 @@ export async function POST(request) {
       `;
     }
     
+    console.log('Progress added successfully');
+    
     return NextResponse.json({ success: true });
+    
   } catch (error) {
     console.error('Fix payment error:', error);
     return NextResponse.json({ error: error.message }, { status: 500 });
