@@ -2,33 +2,25 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { useRouter, useSearchParams } from 'next/navigation';
-import { Suspense } from 'react';
+import { useRouter } from 'next/navigation';
 
-function DashboardContent() {
+export default function DashboardPage() {
   const router = useRouter();
-  const searchParams = useSearchParams();
   const [user, setUser] = useState(null);
   const [lessons, setLessons] = useState([]);
   const [loading, setLoading] = useState(true);
   const [hasPaid, setHasPaid] = useState(false);
   const [checkCount, setCheckCount] = useState(0);
 
-  const checkPaymentStatus = async () => {
+  // Function to check payment status
+  const checkPayment = async () => {
     try {
-      console.log('Checking payment status...');
-      const paymentRes = await fetch('/api/payments/status', {
-        cache: 'no-store',
-        headers: { 'Cache-Control': 'no-cache' }
+      const res = await fetch('/api/payments/status?t=' + Date.now(), {
+        cache: 'no-store'
       });
-      const paymentData = await paymentRes.json();
-      console.log('Payment status:', paymentData);
-      
-      if (paymentData.hasPaid) {
-        setHasPaid(true);
-        return true;
-      }
-      return false;
+      const data = await res.json();
+      console.log('Payment check result:', data);
+      return data.hasPaid;
     } catch (error) {
       console.error('Payment check error:', error);
       return false;
@@ -36,9 +28,9 @@ function DashboardContent() {
   };
 
   useEffect(() => {
-    async function fetchData() {
+    async function loadDashboard() {
       try {
-        // Step 1: Get user
+        // Get user
         const meRes = await fetch('/api/auth/me');
         const meData = await meRes.json();
         
@@ -49,12 +41,12 @@ function DashboardContent() {
         
         setUser(meData.user);
         
-        // Step 2: Check payment status (retry up to 3 times)
+        // Check payment status multiple times
         let paid = false;
         for (let i = 0; i < 3; i++) {
-          paid = await checkPaymentStatus();
+          paid = await checkPayment();
           if (paid) break;
-          if (i < 2) await new Promise(resolve => setTimeout(resolve, 1000));
+          if (i < 2) await new Promise(r => setTimeout(r, 1000));
         }
         
         if (!paid) {
@@ -62,15 +54,17 @@ function DashboardContent() {
           return;
         }
         
-        // Step 3: Fetch lessons
+        setHasPaid(true);
+        
+        // Load lessons
         const lessonsRes = await fetch('/api/lessons');
         const lessonsData = await lessonsRes.json();
         
         if (lessonsData.lessons) {
-          const completedLessons = JSON.parse(localStorage.getItem(`completed_lessons_${meData.user.id}`) || '[]');
+          const completed = JSON.parse(localStorage.getItem(`completed_lessons_${meData.user.id}`) || '[]');
           const lessonsWithProgress = lessonsData.lessons.map(lesson => ({
             ...lesson,
-            completed: completedLessons.includes(lesson.id)
+            completed: completed.includes(lesson.id)
           }));
           setLessons(lessonsWithProgress);
         }
@@ -81,7 +75,7 @@ function DashboardContent() {
       }
     }
     
-    fetchData();
+    loadDashboard();
   }, [router]);
 
   const completedCount = lessons.filter(l => l.completed).length;
@@ -109,12 +103,9 @@ function DashboardContent() {
             Purchase Course - ₦50,000
           </Link>
         </div>
-        <button 
-          onClick={() => window.location.reload()} 
-          className="text-[#FFB347] hover:underline"
-        >
-          ↻ Refresh after payment
-        </button>
+        <Link href="/fix-access" className="text-[#FFB347] hover:underline">
+          Already paid? Click here to fix access
+        </Link>
       </div>
     );
   }
@@ -155,13 +146,5 @@ function DashboardContent() {
         ))}
       </div>
     </div>
-  );
-}
-
-export default function DashboardPage() {
-  return (
-    <Suspense fallback={<div className="text-center py-12">Loading...</div>}>
-      <DashboardContent />
-    </Suspense>
   );
 }
