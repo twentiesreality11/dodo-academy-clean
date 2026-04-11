@@ -6,18 +6,26 @@ export const runtime = 'nodejs';
 
 export async function GET(request) {
   try {
-    // Get session from cookie
     const sessionId = request.cookies.get('session')?.value;
     
+    console.log('Payment status check - Session ID:', sessionId);
+    
     if (!sessionId) {
+      console.log('No session, returning hasPaid: false');
+      return NextResponse.json({ hasPaid: false });
+    }
+    
+    if (!process.env.POSTGRES_URL) {
+      console.log('No database URL');
       return NextResponse.json({ hasPaid: false });
     }
     
     const sql = neon(process.env.POSTGRES_URL);
     
-    // Check if user has a successful payment
+    // Check for successful payment
     const payments = await sql`
-      SELECT status FROM payments 
+      SELECT id, status, reference, created_at 
+      FROM payments 
       WHERE user_id = ${sessionId} 
         AND course_type = 'foundation' 
         AND status = 'success'
@@ -26,6 +34,11 @@ export async function GET(request) {
     `;
     
     const hasPaid = payments && payments.length > 0;
+    console.log('Payment status result:', hasPaid);
+    
+    if (hasPaid) {
+      console.log('Payment found - reference:', payments[0].reference);
+    }
     
     return NextResponse.json({ hasPaid });
   } catch (error) {

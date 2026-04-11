@@ -10,6 +10,28 @@ export default function DashboardPage() {
   const [lessons, setLessons] = useState([]);
   const [loading, setLoading] = useState(true);
   const [hasPaid, setHasPaid] = useState(false);
+  const [checkingPayment, setCheckingPayment] = useState(true);
+
+  const checkPaymentStatus = async () => {
+    try {
+      console.log('Checking payment status...');
+      const paymentRes = await fetch('/api/payments/status', {
+        cache: 'no-store',
+        headers: { 'Cache-Control': 'no-cache' }
+      });
+      const paymentData = await paymentRes.json();
+      console.log('Payment status response:', paymentData);
+      
+      if (paymentData.hasPaid) {
+        setHasPaid(true);
+        return true;
+      }
+      return false;
+    } catch (error) {
+      console.error('Payment check error:', error);
+      return false;
+    }
+  };
 
   useEffect(() => {
     async function fetchData() {
@@ -29,20 +51,14 @@ export default function DashboardPage() {
         console.log('User found:', meData.user.email);
         
         // Step 2: Check payment status
-        console.log('Checking payment status...');
-        const paymentRes = await fetch('/api/payments/status');
-        const paymentData = await paymentRes.json();
+        const paid = await checkPaymentStatus();
+        setCheckingPayment(false);
         
-        console.log('Payment status:', paymentData);
-        
-        if (!paymentData.hasPaid) {
+        if (!paid) {
           console.log('User has not paid');
-          setHasPaid(false);
           setLoading(false);
           return;
         }
-        
-        setHasPaid(true);
         
         // Step 3: Fetch lessons
         console.log('Fetching lessons...');
@@ -73,15 +89,9 @@ export default function DashboardPage() {
           }));
           
           setLessons(lessonsWithProgress);
-        } else {
-          console.warn('No lessons returned from API');
-          setLessons([]);
         }
       } catch (error) {
         console.error('Dashboard error:', error);
-        // Show error but don't crash
-        setHasPaid(false);
-        setLessons([]);
       } finally {
         setLoading(false);
       }
@@ -93,8 +103,7 @@ export default function DashboardPage() {
   const completedCount = lessons.filter(l => l.completed).length;
   const progress = lessons.length > 0 ? (completedCount / lessons.length) * 100 : 0;
 
-  // Show loading state
-  if (loading) {
+  if (loading || checkingPayment) {
     return (
       <div className="text-center py-12">
         <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-[#FFB347]"></div>
@@ -117,7 +126,13 @@ export default function DashboardPage() {
             Purchase Course - ₦50,000
           </Link>
         </div>
-        <Link href="/foundation" className="text-[#FFB347] hover:underline">
+        <button 
+          onClick={() => window.location.reload()} 
+          className="text-[#FFB347] hover:underline mb-4 block w-full text-center"
+        >
+          ↻ Refresh after payment
+        </button>
+        <Link href="/foundation" className="text-gray-500 hover:text-[#FFB347] text-sm">
           ← Back to Course Info
         </Link>
       </div>
