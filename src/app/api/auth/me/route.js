@@ -1,9 +1,8 @@
 import { NextResponse } from 'next/server';
+import { getUserById } from '@/lib/store';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
-
-let users = [];
 
 export async function GET(request) {
   const sessionId = request.cookies.get('session')?.value;
@@ -12,7 +11,7 @@ export async function GET(request) {
     return NextResponse.json({ user: null });
   }
   
-  const user = users.find(u => u.id === sessionId);
+  const user = getUserById(sessionId);
   if (!user) {
     return NextResponse.json({ user: null });
   }

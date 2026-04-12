@@ -1,12 +1,10 @@
 import { NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
 import { v4 as uuidv4 } from 'uuid';
+import { getUserByEmail, createUser } from '@/lib/store';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
-
-// In-memory storage (resets on server restart - for demo only)
-let users = [];
 
 export async function POST(request) {
   try {
@@ -23,7 +21,7 @@ export async function POST(request) {
     }
     
     // Check if user exists
-    const existingUser = users.find(u => u.email === email);
+    const existingUser = getUserByEmail(email);
     if (existingUser) {
       return NextResponse.json({ error: 'Email already registered' }, { status: 400 });
     }
@@ -32,13 +30,15 @@ export async function POST(request) {
     const userId = uuidv4();
     const hashedPassword = await bcrypt.hash(password, 10);
     
-    users.push({
+    const newUser = {
       id: userId,
       name,
       email,
       password: hashedPassword,
       created_at: new Date().toISOString()
-    });
+    };
+    
+    createUser(newUser);
     
     console.log('User created:', userId);
     

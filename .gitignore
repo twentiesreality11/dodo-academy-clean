@@ -7,3 +7,5 @@ data/*.json
 .env.local
 .DS_Store
 *.log
+# User data
+data/users.json

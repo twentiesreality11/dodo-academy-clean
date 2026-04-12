@@ -1,11 +1,9 @@
 import { NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
+import { getUserByEmail } from '@/lib/store';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
-
-// Shared in-memory storage
-let users = [];
 
 export async function POST(request) {
   try {
@@ -17,13 +15,15 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Email and password required' }, { status: 400 });
     }
     
-    const user = users.find(u => u.email === email);
+    const user = getUserByEmail(email);
     if (!user) {
+      console.log('User not found:', email);
       return NextResponse.json({ error: 'Invalid email or password' }, { status: 401 });
     }
     
     const isValid = await bcrypt.compare(password, user.password);
     if (!isValid) {
+      console.log('Invalid password for:', email);
       return NextResponse.json({ error: 'Invalid email or password' }, { status: 401 });
     }
     
