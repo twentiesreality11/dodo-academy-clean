@@ -62,40 +62,50 @@ export default function AssessmentPage() {
     }));
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setError('');
+const handleSubmit = async (e) => {
+  e.preventDefault();
+  setError('');
+  
+  // Count answered questions
+  const answeredCount = Object.values(answers).filter(a => a !== '' && a !== undefined).length;
+  
+  console.log(`Answered: ${answeredCount}/${questions.length}`);
+  
+  if (answeredCount !== questions.length) {
+    setError(`Please answer all ${questions.length} questions. You've answered ${answeredCount}.`);
+    return;
+  }
+  
+  setSubmitting(true);
+  
+  try {
+    console.log('Submitting answers...', answers);
     
-    const answeredCount = Object.values(answers).filter(a => a !== '' && a !== undefined).length;
+    const res = await fetch('/api/assessment/submit', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ 
+        answers, 
+        userId: user?.id 
+      }),
+    });
     
-    if (answeredCount !== questions.length) {
-      setError(`Please answer all ${questions.length} questions. You've answered ${answeredCount}.`);
-      return;
+    const data = await res.json();
+    console.log('Submit response:', data);
+    
+    if (res.ok) {
+      // Redirect to results page
+      router.push(`/foundation/result?score=${data.score}&total=${data.total}&passed=${data.passed}`);
+    } else {
+      setError(data.error || 'Error submitting assessment');
     }
-    
-    setSubmitting(true);
-    
-    try {
-      const res = await fetch('/api/assessment/submit', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ answers, userId: user?.id }),
-      });
-      
-      const data = await res.json();
-      
-      if (res.ok) {
-        router.push(`/foundation/result?score=${data.score}&total=${data.total}&passed=${data.passed}`);
-      } else {
-        setError(data.error || 'Error submitting assessment');
-      }
-    } catch (err) {
-      console.error('Submit error:', err);
-      setError('Network error. Please try again.');
-    } finally {
-      setSubmitting(false);
-    }
-  };
+  } catch (err) {
+    console.error('Submit error:', err);
+    setError('Network error. Please try again.');
+  } finally {
+    setSubmitting(false);
+  }
+};
 
   if (loading) {
     return (
