@@ -1,215 +1,107 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 
-export default function AssessmentPage() {
+export default function DashboardPage() {
   const router = useRouter();
   const [user, setUser] = useState(null);
-  const [questions, setQuestions] = useState([]);
-  const [answers, setAnswers] = useState({});
+  const [lessons, setLessons] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState('');
 
   useEffect(() => {
-    async function fetchData() {
+    async function loadDashboard() {
       try {
-        // Check user
+        // Get user
         const meRes = await fetch('/api/auth/me');
         const meData = await meRes.json();
         
         if (!meData.user) {
-          router.push('/login?redirect=/foundation/assessment');
+          router.push('/login?redirect=/foundation/dashboard');
           return;
         }
         
         setUser(meData.user);
         
-        // Fetch questions
-        const questionsRes = await fetch('/api/assessment/questions');
-        const questionsData = await questionsRes.json();
+        // Load lessons (always shows, no payment check)
+        const lessonsRes = await fetch('/api/lessons');
+        const lessonsData = await lessonsRes.json();
         
-        if (!questionsRes.ok) {
-          setError(questionsData.error || 'Failed to load questions');
-        } else if (questionsData.questions && questionsData.questions.length > 0) {
-          setQuestions(questionsData.questions);
-          // Initialize answers
-          const initialAnswers = {};
-          questionsData.questions.forEach((_, index) => {
-            initialAnswers[`q${index}`] = '';
-          });
-          setAnswers(initialAnswers);
-        } else {
-          setError('No assessment questions found. Please contact support.');
+        if (lessonsData.lessons) {
+          // Get completed lessons from localStorage
+          const completed = JSON.parse(localStorage.getItem(`completed_lessons_${meData.user.id}`) || '[]');
+          const lessonsWithProgress = lessonsData.lessons.map(lesson => ({
+            ...lesson,
+            completed: completed.includes(lesson.id)
+          }));
+          setLessons(lessonsWithProgress);
         }
-      } catch (err) {
-        console.error('Error fetching data:', err);
-        setError('Network error. Please try again.');
+      } catch (error) {
+        console.error('Dashboard error:', error);
       } finally {
         setLoading(false);
       }
     }
     
-    fetchData();
+    loadDashboard();
   }, [router]);
 
-  const handleAnswerChange = (questionIndex, value) => {
-    setAnswers(prev => ({
-      ...prev,
-      [`q${questionIndex}`]: value
-    }));
-  };
-
-const handleSubmit = async (e) => {
-  e.preventDefault();
-  setError('');
-  
-  // Count answered questions
-  const answeredCount = Object.values(answers).filter(a => a !== '' && a !== undefined).length;
-  
-  console.log(`Answered: ${answeredCount}/${questions.length}`);
-  
-  if (answeredCount !== questions.length) {
-    setError(`Please answer all ${questions.length} questions. You've answered ${answeredCount}.`);
-    return;
-  }
-  
-  setSubmitting(true);
-  
-  try {
-    console.log('Submitting answers...', answers);
-    
-    const res = await fetch('/api/assessment/submit', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ 
-        answers, 
-        userId: user?.id 
-      }),
-    });
-    
-    const data = await res.json();
-    console.log('Submit response:', data);
-    
-    if (res.ok) {
-      // Redirect to results page
-      router.push(`/foundation/result?score=${data.score}&total=${data.total}&passed=${data.passed}`);
-    } else {
-      setError(data.error || 'Error submitting assessment');
-    }
-  } catch (err) {
-    console.error('Submit error:', err);
-    setError('Network error. Please try again.');
-  } finally {
-    setSubmitting(false);
-  }
-};
+  const completedCount = lessons.filter(l => l.completed).length;
+  const progress = lessons.length > 0 ? (completedCount / lessons.length) * 100 : 0;
 
   if (loading) {
     return (
       <div className="text-center py-12">
         <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-[#FFB347]"></div>
-        <p className="mt-2">Loading assessment...</p>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="text-center py-12">
-        <div className="bg-red-50 border border-red-200 rounded-2xl p-8 max-w-md mx-auto">
-          <h2 className="text-xl font-bold text-red-700 mb-4">Error</h2>
-          <p className="text-gray-700 mb-6">{error}</p>
-          <button onClick={() => window.location.reload()} className="btn-primary">
-            Try Again
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  if (questions.length === 0) {
-    return (
-      <div className="text-center py-12">
-        <div className="bg-yellow-50 border border-yellow-200 rounded-2xl p-8 max-w-md mx-auto">
-          <h2 className="text-xl font-bold text-yellow-700 mb-4">No Questions Available</h2>
-          <p className="text-gray-700 mb-6">Please contact support to set up the assessment.</p>
-          <Link href="/foundation/dashboard" className="btn-primary">
-            Back to Dashboard
-          </Link>
-        </div>
+        <p className="mt-2">Loading dashboard...</p>
       </div>
     );
   }
 
   return (
     <div>
-      <div className="mb-6">
-        <Link href="/foundation/dashboard" className="text-[#FFB347] hover:underline">
-          ← Back to Dashboard
-        </Link>
+      <h1 className="text-3xl font-bold mb-2">Welcome, {user?.name}!</h1>
+      <p className="text-gray-600 mb-8">Browse our course curriculum below. Click "Start" to purchase and access each lesson.</p>
+
+      <div className="bg-white rounded-2xl p-6 shadow-md mb-8">
+        <div className="flex justify-between items-center mb-2">
+          <span className="font-semibold">Free Preview Progress</span>
+          <span className="text-[#FFB347] font-bold">{Math.round(progress)}%</span>
+        </div>
+        <div className="w-full bg-gray-200 rounded-full h-3">
+          <div className="bg-[#FFB347] h-3 rounded-full" style={{ width: `${progress}%` }}></div>
+        </div>
+        <p className="text-sm text-gray-500 mt-2">{completedCount} of {lessons.length} lessons previewed</p>
       </div>
 
-      <h1 className="text-3xl font-bold mb-4">Final Assessment</h1>
-      <p className="text-gray-600 mb-6">
-        Test your knowledge with this {questions.length}-question assessment. You need at least 16/20 to pass.
-      </p>
-      
-      {error && (
-        <div className="bg-red-100 text-red-700 p-3 rounded-lg mb-4">
-          {error}
-        </div>
-      )}
-      
-      <form onSubmit={handleSubmit} className="space-y-6">
-        {questions.map((q, index) => {
-          let options = [];
-          try {
-            options = typeof q.options === 'string' ? JSON.parse(q.options) : q.options;
-          } catch (e) {
-            console.error('Error parsing options:', e);
-            options = [];
-          }
-          
-          return (
-            <div key={q.id} className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-              <p className="font-semibold mb-4 text-lg">
-                {index + 1}. {q.question}
-              </p>
-              <div className="space-y-3">
-                {options.map((option, optIndex) => (
-                  <label 
-                    key={optIndex} 
-                    className="flex items-center gap-3 cursor-pointer p-3 hover:bg-gray-50 rounded-lg transition"
-                  >
-                    <input
-                      type="radio"
-                      name={`question_${index}`}
-                      value={optIndex}
-                      checked={answers[`q${index}`] === String(optIndex)}
-                      onChange={() => handleAnswerChange(index, String(optIndex))}
-                      className="w-4 h-4 text-[#FFB347]"
-                    />
-                    <span className="text-gray-700">{option}</span>
-                  </label>
-                ))}
+      <div className="space-y-3">
+        {lessons.map((lesson, index) => (
+          <div key={lesson.id} className="bg-white rounded-xl p-4 shadow-sm flex justify-between items-center">
+            <div className="flex items-center gap-4">
+              <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center font-semibold">
+                {index + 1}
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold text-[#0B1E33]">{lesson.title}</h3>
+                {!lesson.completed && (
+                  <p className="text-xs text-gray-400">🔒 Requires purchase to access</p>
+                )}
               </div>
             </div>
-          );
-        })}
-        
-        <div className="text-center pt-4">
-          <button 
-            type="submit" 
-            disabled={submitting} 
-            className="btn-primary px-8 py-3 text-lg"
-          >
-            {submitting ? 'Submitting...' : 'Submit Assessment'}
-          </button>
-        </div>
-      </form>
+            {lesson.completed ? (
+              <span className="bg-green-100 text-green-700 px-3 py-1 rounded-full text-sm">✓ Completed</span>
+            ) : (
+              <Link 
+                href={`/foundation/checkout?lesson=${lesson.id}`}
+                className="btn-primary text-sm py-2 px-4"
+              >
+                ₦50,000 - Purchase to Start
+              </Link>
+            )}
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

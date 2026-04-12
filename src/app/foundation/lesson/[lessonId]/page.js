@@ -8,39 +8,22 @@ export default function LessonPage() {
   const params = useParams();
   const router = useRouter();
   const lessonId = params?.lessonId;
-  const [user, setUser] = useState(null);
   const [lesson, setLesson] = useState(null);
-  const [completed, setCompleted] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [hasPaid, setHasPaid] = useState(false);
 
   useEffect(() => {
-    if (!lessonId) return;
+    // Check if user has paid
+    const paid = localStorage.getItem('has_paid') === 'true';
+    setHasPaid(paid);
     
-    async function fetchData() {
+    async function fetchLesson() {
       try {
-        // Get user
-        const meRes = await fetch('/api/auth/me');
-        const meData = await meRes.json();
-        
-        if (!meData.user) {
-          router.push('/login');
-          return;
-        }
-        
-        setUser(meData.user);
-        
-        // Check if lesson is completed from localStorage
-        const completedLessons = JSON.parse(localStorage.getItem(`completed_lessons_${meData.user.id}`) || '[]');
-        setCompleted(completedLessons.includes(lessonId));
-        
-        // Get lesson content
-        const lessonRes = await fetch(`/api/lessons/${lessonId}`);
-        const lessonData = await lessonRes.json();
-        
-        if (lessonData.lesson) {
-          setLesson(lessonData.lesson);
-        } else {
-          router.push('/foundation/dashboard');
+        const res = await fetch('/api/lessons');
+        const data = await res.json();
+        if (data.lessons) {
+          const found = data.lessons.find(l => l.id === lessonId);
+          setLesson(found);
         }
       } catch (error) {
         console.error('Error:', error);
@@ -49,26 +32,31 @@ export default function LessonPage() {
       }
     }
     
-    fetchData();
-  }, [lessonId, router]);
-
-  const markComplete = () => {
-    if (!user) return;
-    
-    const completedLessons = JSON.parse(localStorage.getItem(`completed_lessons_${user.id}`) || '[]');
-    if (!completedLessons.includes(lessonId)) {
-      completedLessons.push(lessonId);
-      localStorage.setItem(`completed_lessons_${user.id}`, JSON.stringify(completedLessons));
-      setCompleted(true);
-      alert('Lesson marked as complete!');
-    }
-  };
+    fetchLesson();
+  }, [lessonId]);
 
   if (loading) {
     return (
       <div className="text-center py-12">
         <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-[#FFB347]"></div>
-        <p className="mt-2">Loading lesson...</p>
+        <p className="mt-2">Loading...</p>
+      </div>
+    );
+  }
+
+  if (!hasPaid) {
+    return (
+      <div className="max-w-2xl mx-auto text-center">
+        <div className="bg-yellow-50 border border-yellow-200 rounded-2xl p-8">
+          <div className="text-5xl mb-4">🔒</div>
+          <h1 className="text-2xl font-bold text-yellow-800 mb-4">Payment Required</h1>
+          <p className="text-gray-700 mb-6">
+            You need to purchase the course to access this lesson.
+          </p>
+          <Link href="/foundation/checkout" className="btn-primary inline-block">
+            Purchase Course - ₦50,000
+          </Link>
+        </div>
       </div>
     );
   }
@@ -92,27 +80,7 @@ export default function LessonPage() {
       
       <div className="bg-white rounded-2xl p-6 md:p-8 shadow-md">
         <h1 className="text-2xl md:text-3xl font-bold mb-4">{lesson.title}</h1>
-        
-        <div 
-          className="lesson-content"
-          dangerouslySetInnerHTML={{ __html: lesson.content }}
-        />
-        
-        <div className="mt-8 pt-6 border-t border-gray-200 flex justify-between items-center">
-          {!completed ? (
-            <button onClick={markComplete} className="btn-primary">
-              Mark as Completed
-            </button>
-          ) : (
-            <span className="text-green-600 font-semibold flex items-center gap-2">
-              ✓ Lesson Completed
-            </span>
-          )}
-          
-          <Link href="/foundation/dashboard" className="text-gray-500 hover:text-[#FFB347]">
-            Back to Dashboard
-          </Link>
-        </div>
+        <div className="lesson-content" dangerouslySetInnerHTML={{ __html: lesson.content }} />
       </div>
     </div>
   );

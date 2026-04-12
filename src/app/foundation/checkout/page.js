@@ -1,11 +1,14 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
+import { Suspense } from 'react';
 
-export default function CheckoutPage() {
+function CheckoutContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const lessonId = searchParams.get('lesson');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [user, setUser] = useState(null);
@@ -30,6 +33,7 @@ export default function CheckoutPage() {
       const res = await fetch('/api/payments/initialize', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ lessonId }),
       });
 
       const data = await res.json();
@@ -52,12 +56,12 @@ export default function CheckoutPage() {
 
   return (
     <div className="max-w-md mx-auto text-center">
-      <h1 className="text-3xl font-bold mb-4">Complete Your Enrollment</h1>
+      <h1 className="text-3xl font-bold mb-4">Purchase Course Access</h1>
       
       <div className="bg-white rounded-2xl p-6 shadow-md mb-6">
         <p className="text-xl font-semibold">Cybersecurity Foundation Course</p>
         <p className="text-3xl font-bold text-[#FFB347] my-4">₦50,000</p>
-        <p className="text-gray-600">One-time payment, lifetime access</p>
+        <p className="text-gray-600">One-time payment, lifetime access to all lessons</p>
         <div className="mt-4 pt-4 border-t border-gray-200">
           <p className="text-sm text-gray-500">Student: {user.name}</p>
           <p className="text-sm text-gray-500">Email: {user.email}</p>
@@ -79,10 +83,18 @@ export default function CheckoutPage() {
       </button>
       
       <p className="text-center mt-4">
-        <Link href="/foundation" className="text-gray-500 hover:text-[#FFB347] text-sm">
-          ← Back to course page
+        <Link href="/foundation/dashboard" className="text-gray-500 hover:text-[#FFB347] text-sm">
+          ← Back to Dashboard
         </Link>
       </p>
     </div>
+  );
+}
+
+export default function CheckoutPage() {
+  return (
+    <Suspense fallback={<div className="text-center py-12">Loading...</div>}>
+      <CheckoutContent />
+    </Suspense>
   );
 }
