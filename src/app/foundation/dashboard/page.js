@@ -2,14 +2,32 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { Suspense } from 'react';
 
-export default function DashboardPage() {
+function DashboardContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [user, setUser] = useState(null);
   const [lessons, setLessons] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [hasAccess, setHasAccess] = useState(false);
+  const [hasPaid, setHasPaid] = useState(false);
+  const [checkingCount, setCheckingCount] = useState(0);
+
+  const checkPaymentStatus = async () => {
+    try {
+      const res = await fetch('/api/payments/status?t=' + Date.now(), {
+        cache: 'no-store',
+        headers: { 'Cache-Control': 'no-cache' }
+      });
+      const data = await res.json();
+      console.log('Payment check result:', data);
+      return data.hasPaid;
+    } catch (error) {
+      console.error('Payment check error:', error);
+      return false;
+    }
+  };
 
   useEffect(() => {
     async function loadDashboard() {
@@ -25,27 +43,40 @@ export default function DashboardPage() {
         
         setUser(meData.user);
         
-        // Fetch lessons - the API will check payment
-        const lessonsRes = await fetch('/api/lessons');
+        // Check if paid parameter is in URL (from payment redirect)
+        const justPaid = searchParams.get('paid') === 'true';
         
-        if (lessonsRes.status === 403) {
-          // No access - show payment required
-          setHasAccess(false);
+        // Check payment status (try up to 3 times if just paid)
+        let paid = false;
+        const maxAttempts = justPaid ? 5 : 1;
+        
+        for (let i = 0; i < maxAttempts; i++) {
+          paid = await checkPaymentStatus();
+          if (paid) break;
+          if (i < maxAttempts - 1) {
+            await new Promise(r => setTimeout(r, 1000));
+          }
+        }
+        
+        if (!paid) {
+          setHasPaid(false);
           setLoading(false);
           return;
         }
         
+        setHasPaid(true);
+        
+        // Load lessons
+        const lessonsRes = await fetch('/api/lessons');
         const lessonsData = await lessonsRes.json();
         
-        if (lessonsData.lessons && lessonsData.lessons.length > 0) {
-          // Get completed lessons from localStorage
+        if (lessonsData.lessons) {
           const completed = JSON.parse(localStorage.getItem(`completed_lessons_${meData.user.id}`) || '[]');
           const lessonsWithProgress = lessonsData.lessons.map(lesson => ({
             ...lesson,
             completed: completed.includes(lesson.id)
           }));
           setLessons(lessonsWithProgress);
-          setHasAccess(true);
         }
       } catch (error) {
         console.error('Dashboard error:', error);
@@ -55,7 +86,7 @@ export default function DashboardPage() {
     }
     
     loadDashboard();
-  }, [router]);
+  }, [router, searchParams]);
 
   const completedCount = lessons.filter(l => l.completed).length;
   const progress = lessons.length > 0 ? (completedCount / lessons.length) * 100 : 0;
@@ -69,7 +100,7 @@ export default function DashboardPage() {
     );
   }
 
-  if (!hasAccess) {
+  if (!hasPaid) {
     return (
       <div className="max-w-2xl mx-auto text-center">
         <div className="bg-yellow-50 border border-yellow-200 rounded-2xl p-8 mb-6">
@@ -88,6 +119,12 @@ export default function DashboardPage() {
 
   return (
     <div>
+      {searchParams.get('paid') === 'true' && (
+        <div className="bg-green-50 border border-green-200 rounded-xl p-4 mb-6 text-green-700 text-center">
+          ✅ Payment successful! You now have full access to the course.
+        </div>
+      )}
+      
       <h1 className="text-3xl font-bold mb-2">Welcome, {user?.name}!</h1>
       <p className="text-gray-600 mb-8">Track your progress through the Cybersecurity Foundation course.</p>
 
@@ -122,5 +159,13 @@ export default function DashboardPage() {
         ))}
       </div>
     </div>
+  );
+}
+
+export default function DashboardPage() {
+  return (
+    <Suspense fallback={<div className="text-center py-12">Loading...</div>}>
+      <DashboardContent />
+    </Suspense>
   );
 }

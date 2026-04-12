@@ -47,23 +47,33 @@ export async function GET(request) {
     
     if (!process.env.POSTGRES_URL) {
       console.log('No database URL, but payment successful');
-      return NextResponse.redirect(new URL('/foundation/dashboard?paid=true', request.url));
+      return NextResponse.redirect(new URL('/foundation/dashboard?paid=true&t=' + Date.now(), request.url));
     }
     
     const sql = neon(process.env.POSTGRES_URL);
     
-    // 3. Create or update payment record
-    console.log('Creating/updating payment record...');
-    await sql`
-      INSERT INTO payments (id, user_id, reference, amount, status, course_type, created_at)
-      VALUES (gen_random_uuid(), ${userId}, ${reference}, ${paystackData.data.amount}, 'success', 'foundation', NOW())
-      ON CONFLICT (reference) DO UPDATE 
-      SET status = 'success', user_id = ${userId}
+    // 3. Check if payment already exists
+    const existingPayment = await sql`
+      SELECT id, status FROM payments WHERE reference = ${reference}
     `;
-    console.log('Payment record saved');
     
-    // 4. Initialize progress for lessons
-    console.log('Initializing progress...');
+    if (existingPayment.length === 0) {
+      // Create new payment record
+      await sql`
+        INSERT INTO payments (id, user_id, reference, amount, status, course_type, created_at)
+        VALUES (gen_random_uuid(), ${userId}, ${reference}, ${paystackData.data.amount}, 'success', 'foundation', NOW())
+      `;
+      console.log('New payment record created');
+    } else if (existingPayment[0].status !== 'success') {
+      // Update existing payment
+      await sql`
+        UPDATE payments SET status = 'success' WHERE reference = ${reference}
+      `;
+      console.log('Payment record updated to success');
+    }
+    
+    // 4. Ensure progress exists for all lessons
+    console.log('Setting up progress for user...');
     const lessons = await sql`SELECT id FROM lessons`;
     for (const lesson of lessons) {
       await sql`
@@ -74,9 +84,14 @@ export async function GET(request) {
     }
     console.log('Progress initialized');
     
-    // 5. Redirect to dashboard
-    console.log('Payment successful, redirecting to dashboard');
-    const response = NextResponse.redirect(new URL('/foundation/dashboard', request.url));
+    // 5. Redirect to dashboard with success flag (bypass cache)
+    const dashboardUrl = new URL('/foundation/dashboard', request.url);
+    dashboardUrl.searchParams.set('paid', 'true');
+    dashboardUrl.searchParams.set('t', Date.now().toString());
+    
+    console.log('Payment successful, redirecting to:', dashboardUrl.toString());
+    
+    const response = NextResponse.redirect(dashboardUrl);
     
     // Refresh session cookie
     response.cookies.set('session', userId, {
