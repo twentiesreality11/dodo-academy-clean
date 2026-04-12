@@ -12,7 +12,8 @@ function DashboardContent() {
   const [lessons, setLessons] = useState([]);
   const [loading, setLoading] = useState(true);
   const [hasPaid, setHasPaid] = useState(false);
-  const [checkingCount, setCheckingCount] = useState(0);
+  const [retryCount, setRetryCount] = useState(0);
+  const [statusMessage, setStatusMessage] = useState('');
 
   const checkPaymentStatus = async () => {
     try {
@@ -43,28 +44,40 @@ function DashboardContent() {
         
         setUser(meData.user);
         
-        // Check if paid parameter is in URL (from payment redirect)
-        const justPaid = searchParams.get('paid') === 'true';
+        // Check if this is from a successful payment
+        const paymentSuccess = searchParams.get('payment') === 'success';
         
-        // Check payment status (try up to 3 times if just paid)
+        if (paymentSuccess) {
+          setStatusMessage('Payment successful! Verifying your access...');
+        }
+        
+        // Retry payment status check up to 5 times (every 2 seconds)
         let paid = false;
-        const maxAttempts = justPaid ? 5 : 1;
+        const maxRetries = 5;
         
-        for (let i = 0; i < maxAttempts; i++) {
+        for (let i = 0; i < maxRetries; i++) {
           paid = await checkPaymentStatus();
-          if (paid) break;
-          if (i < maxAttempts - 1) {
-            await new Promise(r => setTimeout(r, 1000));
+          setRetryCount(i + 1);
+          
+          if (paid) {
+            setStatusMessage('Payment verified! Loading your course...');
+            break;
+          }
+          
+          if (i < maxRetries - 1) {
+            await new Promise(r => setTimeout(r, 2000));
           }
         }
         
         if (!paid) {
           setHasPaid(false);
           setLoading(false);
+          setStatusMessage('');
           return;
         }
         
         setHasPaid(true);
+        setStatusMessage('');
         
         // Load lessons
         const lessonsRes = await fetch('/api/lessons');
@@ -95,7 +108,10 @@ function DashboardContent() {
     return (
       <div className="text-center py-12">
         <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-[#FFB347]"></div>
-        <p className="mt-2">Loading dashboard...</p>
+        <p className="mt-2">{statusMessage || 'Loading dashboard...'}</p>
+        {retryCount > 0 && retryCount < 5 && (
+          <p className="text-sm text-gray-500 mt-2">Verifying payment ({retryCount}/5)...</p>
+        )}
       </div>
     );
   }
@@ -113,13 +129,18 @@ function DashboardContent() {
             Purchase Course - ₦50,000
           </Link>
         </div>
+        {searchParams.get('payment') === 'error' && (
+          <p className="text-red-600 text-sm">
+            There was an issue verifying your payment. Please contact support if your payment was deducted.
+          </p>
+        )}
       </div>
     );
   }
 
   return (
     <div>
-      {searchParams.get('paid') === 'true' && (
+      {searchParams.get('payment') === 'success' && (
         <div className="bg-green-50 border border-green-200 rounded-xl p-4 mb-6 text-green-700 text-center">
           ✅ Payment successful! You now have full access to the course.
         </div>
