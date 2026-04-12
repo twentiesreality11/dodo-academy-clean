@@ -9,23 +9,7 @@ export default function DashboardPage() {
   const [user, setUser] = useState(null);
   const [lessons, setLessons] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [hasPaid, setHasPaid] = useState(false);
-  const [checkCount, setCheckCount] = useState(0);
-
-  // Function to check payment status
-  const checkPayment = async () => {
-    try {
-      const res = await fetch('/api/payments/status?t=' + Date.now(), {
-        cache: 'no-store'
-      });
-      const data = await res.json();
-      console.log('Payment check result:', data);
-      return data.hasPaid;
-    } catch (error) {
-      console.error('Payment check error:', error);
-      return false;
-    }
-  };
+  const [hasAccess, setHasAccess] = useState(false);
 
   useEffect(() => {
     async function loadDashboard() {
@@ -41,32 +25,27 @@ export default function DashboardPage() {
         
         setUser(meData.user);
         
-        // Check payment status multiple times
-        let paid = false;
-        for (let i = 0; i < 3; i++) {
-          paid = await checkPayment();
-          if (paid) break;
-          if (i < 2) await new Promise(r => setTimeout(r, 1000));
-        }
+        // Fetch lessons - the API will check payment
+        const lessonsRes = await fetch('/api/lessons');
         
-        if (!paid) {
+        if (lessonsRes.status === 403) {
+          // No access - show payment required
+          setHasAccess(false);
           setLoading(false);
           return;
         }
         
-        setHasPaid(true);
-        
-        // Load lessons
-        const lessonsRes = await fetch('/api/lessons');
         const lessonsData = await lessonsRes.json();
         
-        if (lessonsData.lessons) {
+        if (lessonsData.lessons && lessonsData.lessons.length > 0) {
+          // Get completed lessons from localStorage
           const completed = JSON.parse(localStorage.getItem(`completed_lessons_${meData.user.id}`) || '[]');
           const lessonsWithProgress = lessonsData.lessons.map(lesson => ({
             ...lesson,
             completed: completed.includes(lesson.id)
           }));
           setLessons(lessonsWithProgress);
+          setHasAccess(true);
         }
       } catch (error) {
         console.error('Dashboard error:', error);
@@ -90,7 +69,7 @@ export default function DashboardPage() {
     );
   }
 
-  if (!hasPaid) {
+  if (!hasAccess) {
     return (
       <div className="max-w-2xl mx-auto text-center">
         <div className="bg-yellow-50 border border-yellow-200 rounded-2xl p-8 mb-6">
@@ -103,9 +82,6 @@ export default function DashboardPage() {
             Purchase Course - ₦50,000
           </Link>
         </div>
-        <Link href="/fix-access" className="text-[#FFB347] hover:underline">
-          Already paid? Click here to fix access
-        </Link>
       </div>
     );
   }
