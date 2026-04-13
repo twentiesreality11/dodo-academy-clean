@@ -3,26 +3,30 @@
 @tailwind utilities;
 
 .btn-primary {
-  @apply bg-[#0B1E33] text-white font-semibold py-3 px-6 rounded-full shadow-md hover:bg-[#1A3A5F] transition;
+  @apply bg-[#0B1E33] text-white font-semibold py-2 px-6 rounded-full hover:bg-[#1A3A5F] transition;
 }
 
 .btn-outline {
-  @apply border-2 border-[#0B1E33] text-[#0B1E33] font-semibold py-2 px-5 rounded-full hover:bg-[#0B1E33] hover:text-white transition;
-}
-
-.card {
-  @apply bg-white rounded-2xl shadow-sm border border-gray-100 p-6 hover:shadow-lg transition;
-}
-
-.input-field {
-  @apply w-full px-4 py-2 border border-gray-300 rounded-full focus:outline-none focus:border-[#FFB347] focus:ring-2 focus:ring-[#FFB347]/20;
+  @apply border-2 border-[#0B1E33] text-[#0B1E33] font-semibold py-1 px-4 rounded-full hover:bg-[#0B1E33] hover:text-white transition;
 }
 
 .lesson-content {
   line-height: 1.6;
 }
-.lesson-content h2 { font-size: 1.5rem; font-weight: bold; color: #0B1E33; margin: 2rem 0 1rem; }
-.lesson-content h3 { font-size: 1.25rem; font-weight: 600; color: #0B1E33; margin: 1.5rem 0 0.75rem; }
-.lesson-content p { color: #4a5568; margin-bottom: 1rem; }
-.lesson-content ul, .lesson-content ol { margin: 1rem 0; padding-left: 1.5rem; }
-.lesson-content li { margin-bottom: 0.5rem; }
+
+.lesson-content h2 {
+  font-size: 1.5rem;
+  font-weight: bold;
+  margin: 1.5rem 0 1rem;
+}
+
+.lesson-content h3 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin: 1rem 0 0.5rem;
+}
+
+.lesson-content ul, .lesson-content ol {
+  margin: 1rem 0;
+  padding-left: 1.5rem;
+}

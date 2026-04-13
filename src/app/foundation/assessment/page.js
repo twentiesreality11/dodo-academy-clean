@@ -1,107 +1,92 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 
-export default function DashboardPage() {
+export default function AssessmentPage() {
   const router = useRouter();
   const [user, setUser] = useState(null);
-  const [lessons, setLessons] = useState([]);
+  const [questions, setQuestions] = useState([]);
+  const [answers, setAnswers] = useState({});
   const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+  const [hasPaid, setHasPaid] = useState(false);
 
   useEffect(() => {
-    async function loadDashboard() {
-      try {
-        // Get user
-        const meRes = await fetch('/api/auth/me');
-        const meData = await meRes.json();
-        
-        if (!meData.user) {
-          router.push('/login?redirect=/foundation/dashboard');
-          return;
-        }
-        
-        setUser(meData.user);
-        
-        // Load lessons (always shows, no payment check)
-        const lessonsRes = await fetch('/api/lessons');
-        const lessonsData = await lessonsRes.json();
-        
-        if (lessonsData.lessons) {
-          // Get completed lessons from localStorage
-          const completed = JSON.parse(localStorage.getItem(`completed_lessons_${meData.user.id}`) || '[]');
-          const lessonsWithProgress = lessonsData.lessons.map(lesson => ({
-            ...lesson,
-            completed: completed.includes(lesson.id)
-          }));
-          setLessons(lessonsWithProgress);
-        }
-      } catch (error) {
-        console.error('Dashboard error:', error);
-      } finally {
-        setLoading(false);
+    async function fetchData() {
+      const meRes = await fetch('/api/auth/me');
+      const meData = await meRes.json();
+      if (!meData.user) {
+        router.push('/login');
+        return;
       }
+      setUser(meData.user);
+      
+      const lessonsRes = await fetch('/api/lessons');
+      const lessonsData = await lessonsRes.json();
+      setHasPaid(lessonsData.hasPaid || false);
+      
+      if (!lessonsData.hasPaid) {
+        router.push('/foundation/checkout');
+        return;
+      }
+      
+      const questionsRes = await fetch('/api/assessment/questions');
+      const questionsData = await questionsRes.json();
+      setQuestions(questionsData.questions || []);
+      setLoading(false);
     }
-    
-    loadDashboard();
+    fetchData();
   }, [router]);
 
-  const completedCount = lessons.filter(l => l.completed).length;
-  const progress = lessons.length > 0 ? (completedCount / lessons.length) * 100 : 0;
+  const handleAnswerChange = (questionIndex, value) => {
+    setAnswers(prev => ({ ...prev, [`q${questionIndex}`]: value }));
+  };
 
-  if (loading) {
-    return (
-      <div className="text-center py-12">
-        <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-[#FFB347]"></div>
-        <p className="mt-2">Loading dashboard...</p>
-      </div>
-    );
-  }
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (Object.keys(answers).length !== questions.length) {
+      alert(`Please answer all ${questions.length} questions.`);
+      return;
+    }
+    
+    setSubmitting(true);
+    const res = await fetch('/api/assessment/submit', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ answers, userId: user?.id }),
+    });
+    const data = await res.json();
+    router.push(`/foundation/result?score=${data.score}&total=${data.total}&passed=${data.passed}`);
+    setSubmitting(false);
+  };
+
+  if (loading) return <div className="text-center py-12">Loading assessment...</div>;
 
   return (
     <div>
-      <h1 className="text-3xl font-bold mb-2">Welcome, {user?.name}!</h1>
-      <p className="text-gray-600 mb-8">Browse our course curriculum below. Click "Start" to purchase and access each lesson.</p>
-
-      <div className="bg-white rounded-2xl p-6 shadow-md mb-8">
-        <div className="flex justify-between items-center mb-2">
-          <span className="font-semibold">Free Preview Progress</span>
-          <span className="text-[#FFB347] font-bold">{Math.round(progress)}%</span>
-        </div>
-        <div className="w-full bg-gray-200 rounded-full h-3">
-          <div className="bg-[#FFB347] h-3 rounded-full" style={{ width: `${progress}%` }}></div>
-        </div>
-        <p className="text-sm text-gray-500 mt-2">{completedCount} of {lessons.length} lessons previewed</p>
-      </div>
-
-      <div className="space-y-3">
-        {lessons.map((lesson, index) => (
-          <div key={lesson.id} className="bg-white rounded-xl p-4 shadow-sm flex justify-between items-center">
-            <div className="flex items-center gap-4">
-              <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center font-semibold">
-                {index + 1}
-              </div>
-              <div>
-                <h3 className="text-lg font-semibold text-[#0B1E33]">{lesson.title}</h3>
-                {!lesson.completed && (
-                  <p className="text-xs text-gray-400">🔒 Requires purchase to access</p>
-                )}
+      <h1 className="text-3xl font-bold mb-4">Final Assessment</h1>
+      <p className="text-gray-600 mb-6">You need at least 16/20 to pass.</p>
+      <form onSubmit={handleSubmit} className="space-y-6">
+        {questions.map((q, index) => {
+          const options = typeof q.options === 'string' ? JSON.parse(q.options) : q.options;
+          return (
+            <div key={q.id} className="bg-white rounded-2xl p-6 shadow-sm">
+              <p className="font-semibold mb-4">{index + 1}. {q.question}</p>
+              <div className="space-y-2">
+                {options.map((opt, optIndex) => (
+                  <label key={optIndex} className="flex items-center gap-3 cursor-pointer p-2 hover:bg-gray-50 rounded">
+                    <input type="radio" name={`q${index}`} value={optIndex} onChange={() => handleAnswerChange(index, optIndex)} />
+                    <span>{opt}</span>
+                  </label>
+                ))}
               </div>
             </div>
-            {lesson.completed ? (
-              <span className="bg-green-100 text-green-700 px-3 py-1 rounded-full text-sm">✓ Completed</span>
-            ) : (
-              <Link 
-                href={`/foundation/checkout?lesson=${lesson.id}`}
-                className="btn-primary text-sm py-2 px-4"
-              >
-                ₦50,000 - Purchase to Start
-              </Link>
-            )}
-          </div>
-        ))}
-      </div>
+          );
+        })}
+        <button type="submit" disabled={submitting} className="btn-primary w-full">Submit Assessment</button>
+      </form>
     </div>
   );
 }

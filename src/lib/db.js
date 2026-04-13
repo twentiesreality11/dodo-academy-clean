@@ -1,215 +1,102 @@
-// src/lib/db.js
 import { neon } from '@neondatabase/serverless';
 import bcrypt from 'bcryptjs';
 import { v4 as uuidv4 } from 'uuid';
 
-// Use Neon database (set up in Vercel Storage)
 const sql = neon(process.env.POSTGRES_URL);
 
-// Hash password
-export async function hashPassword(password) {
-  return bcrypt.hash(password, 10);
-}
-
-// Verify password
-export async function verifyPassword(password, hash) {
-  return bcrypt.compare(password, hash);
-}
-
-// Get user by email
-export async function getUserByEmail(email) {
-  try {
-    const result = await sql`
-      SELECT * FROM users WHERE email = ${email}
-    `;
-    return result[0] || null;
-  } catch (error) {
-    console.error('getUserByEmail error:', error);
-    return null;
-  }
-}
-
-// Get user by ID
-export async function getUserById(id) {
-  try {
-    const result = await sql`
-      SELECT id, name, email, created_at FROM users WHERE id = ${id}
-    `;
-    return result[0] || null;
-  } catch (error) {
-    console.error('getUserById error:', error);
-    return null;
-  }
-}
-
-// Add these functions to your src/lib/db.js file
-
-// Get assessment questions (assuming you have an assessment.json file)
-export function getAssessmentQuestions() {
-  try {
-    const fs = require('fs');
-    const path = require('path');
-    const filePath = path.join(process.cwd(), 'data', 'assessment.json');
-    const data = JSON.parse(fs.readFileSync(filePath, 'utf8'));
-    return data.questions || [];
-  } catch (error) {
-    console.error('Error loading assessment questions:', error);
-    return [];
-  }
-}
-
-// Save assessment attempt
-export async function saveAssessmentAttempt(userId, score, passed) {
-  try {
-    const fs = require('fs');
-    const path = require('path');
-    const filePath = path.join(process.cwd(), 'data', 'attempts.json');
-    
-    let attempts = { attempts: [] };
-    if (fs.existsSync(filePath)) {
-      attempts = JSON.parse(fs.readFileSync(filePath, 'utf8'));
-    }
-    
-    attempts.attempts.push({
-      userId,
-      score,
-      passed,
-      date: new Date().toISOString()
-    });
-    
-    fs.writeFileSync(filePath, JSON.stringify(attempts, null, 2));
-    return true;
-  } catch (error) {
-    console.error('Error saving assessment attempt:', error);
-    return false;
-  }
-}
-
-// Update lesson progress
-export async function updateLessonProgress(userId, lessonId, completed) {
-  try {
-    const fs = require('fs');
-    const path = require('path');
-    const filePath = path.join(process.cwd(), 'data', 'progress.json');
-    
-    let progress = { progress: [] };
-    if (fs.existsSync(filePath)) {
-      progress = JSON.parse(fs.readFileSync(filePath, 'utf8'));
-    }
-    
-    const existing = progress.progress.find(p => p.user_id === userId && p.lesson_id === lessonId);
-    if (existing) {
-      existing.completed = completed;
-      existing.completed_at = new Date().toISOString();
-    } else {
-      progress.progress.push({
-        user_id: userId,
-        lesson_id: lessonId,
-        completed: completed,
-        completed_at: new Date().toISOString()
-      });
-    }
-    
-    fs.writeFileSync(filePath, JSON.stringify(progress, null, 2));
-    return true;
-  } catch (error) {
-    console.error('Error updating progress:', error);
-    return false;
-  }
-}
-
-// Get user progress
-export async function getProgress(userId) {
-  try {
-    const fs = require('fs');
-    const path = require('path');
-    const filePath = path.join(process.cwd(), 'data', 'progress.json');
-    
-    if (!fs.existsSync(filePath)) {
-      return [];
-    }
-    
-    const progress = JSON.parse(fs.readFileSync(filePath, 'utf8'));
-    return progress.progress.filter(p => p.user_id === userId);
-  } catch (error) {
-    console.error('Error getting progress:', error);
-    return [];
-  }
-}
-
-// Check if database is connected (for status endpoint)
-export async function isDbConnected() {
-  // For file-based storage, always return true if we can read/write
-  try {
-    const fs = require('fs');
-    const path = require('path');
-    const testPath = path.join(process.cwd(), 'data');
-    fs.accessSync(testPath, fs.constants.R_OK | fs.constants.W_OK);
-    return true;
-  } catch (error) {
-    return false;
-  }
-}
-
-// Create new user
 export async function createUser(name, email, password) {
-  try {
-    const hashedPassword = await hashPassword(password);
-    const id = uuidv4();
-    const now = new Date().toISOString();
-    
-    await sql`
-      INSERT INTO users (id, name, email, password, created_at)
-      VALUES (${id}, ${name}, ${email}, ${hashedPassword}, ${now})
-    `;
-    
-    return { id, name, email, created_at: now };
-  } catch (error) {
-    console.error('createUser error:', error);
-    throw new Error('Email already exists or database error');
-  }
+  const hashedPassword = await bcrypt.hash(password, 10);
+  const userId = uuidv4();
+  
+  await sql`
+    INSERT INTO users (id, name, email, password)
+    VALUES (${userId}, ${name}, ${email}, ${hashedPassword})
+  `;
+  
+  return { id: userId, name, email };
 }
 
-// Get lessons (static from data file)
+export async function getUserByEmail(email) {
+  const users = await sql`SELECT * FROM users WHERE email = ${email}`;
+  return users[0] || null;
+}
+
+export async function getUserById(id) {
+  const users = await sql`SELECT id, name, email FROM users WHERE id = ${id}`;
+  return users[0] || null;
+}
+
+export async function verifyUser(email, password) {
+  const user = await getUserByEmail(email);
+  if (!user) return null;
+  
+  const isValid = await bcrypt.compare(password, user.password);
+  if (!isValid) return null;
+  
+  return user;
+}
+
+export async function hasUserPaid(userId) {
+  const payments = await sql`
+    SELECT status FROM payments 
+    WHERE user_id = ${userId} AND status = 'success' AND course_type = 'foundation'
+    LIMIT 1
+  `;
+  return payments.length > 0;
+}
+
+export async function createPayment(userId, reference, amount) {
+  await sql`
+    INSERT INTO payments (id, user_id, reference, amount, status, course_type)
+    VALUES (${uuidv4()}, ${userId}, ${reference}, ${amount}, 'pending', 'foundation')
+  `;
+}
+
+export async function updatePaymentStatus(reference, status) {
+  await sql`
+    UPDATE payments SET status = ${status} WHERE reference = ${reference}
+    RETURNING user_id
+  `;
+}
+
 export async function getLessons() {
-  const fs = require('fs');
-  const path = require('path');
-  const dataPath = path.join(process.cwd(), 'data', 'lessons.json');
-  const data = JSON.parse(fs.readFileSync(dataPath, 'utf8'));
-  return data.lessons || [];
+  return await sql`SELECT * FROM lessons ORDER BY order_num`;
 }
 
-// Get lesson by ID
 export async function getLessonById(id) {
-  const lessons = await getLessons();
-  return lessons.find(l => l.id === id);
+  const lessons = await sql`SELECT * FROM lessons WHERE id = ${id}`;
+  return lessons[0] || null;
 }
 
-// Get user's completed lessons
-export async function getUserProgress(userId) {
-  try {
-    const result = await sql`
-      SELECT lesson_id FROM progress WHERE user_id = ${userId} AND completed = true
-    `;
-    return result.map(r => r.lesson_id);
-  } catch (error) {
-    console.error('getUserProgress error:', error);
-    return [];
-  }
+export async function getProgress(userId) {
+  const progress = await sql`
+    SELECT lesson_id, completed FROM progress WHERE user_id = ${userId}
+  `;
+  return progress;
 }
 
-// Mark lesson as complete
 export async function markLessonComplete(userId, lessonId) {
-  try {
-    await sql`
-      INSERT INTO progress (user_id, lesson_id, completed, completed_at)
-      VALUES (${userId}, ${lessonId}, true, ${new Date().toISOString()})
-      ON CONFLICT (user_id, lesson_id) 
-      DO UPDATE SET completed = true, completed_at = ${new Date().toISOString()}
-    `;
-    return true;
-  } catch (error) {
-    console.error('markLessonComplete error:', error);
-    return false;
-  }
+  await sql`
+    INSERT INTO progress (user_id, lesson_id, completed, completed_at)
+    VALUES (${userId}, ${lessonId}, true, NOW())
+    ON CONFLICT (user_id, lesson_id) DO UPDATE SET completed = true, completed_at = NOW()
+  `;
+}
+
+export async function getAssessmentQuestions() {
+  return await sql`SELECT * FROM assessment_questions ORDER BY id`;
+}
+
+export async function saveAssessmentAttempt(userId, score, passed) {
+  await sql`
+    INSERT INTO assessment_attempts (user_id, score, passed)
+    VALUES (${userId}, ${score}, ${passed})
+  `;
+}
+
+export async function hasPassedAssessment(userId) {
+  const attempts = await sql`
+    SELECT passed FROM assessment_attempts WHERE user_id = ${userId} AND passed = true LIMIT 1
+  `;
+  return attempts.length > 0;
 }
