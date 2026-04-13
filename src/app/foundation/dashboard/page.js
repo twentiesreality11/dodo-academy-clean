@@ -2,58 +2,90 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { useRouter, useSearchParams } from 'next/navigation';
-import { Suspense } from 'react';
+import { useRouter } from 'next/navigation';
 
-function DashboardContent() {
+export default function DashboardPage() {
   const router = useRouter();
-  const searchParams = useSearchParams();
   const [user, setUser] = useState(null);
   const [lessons, setLessons] = useState([]);
   const [hasPaid, setHasPaid] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     async function loadData() {
-      const meRes = await fetch('/api/auth/me');
-      const meData = await meRes.json();
-      
-      if (!meData.user) {
-        router.push('/login?redirect=/foundation/dashboard');
-        return;
+      try {
+        // Check if user is logged in
+        const meRes = await fetch('/api/auth/me');
+        const meData = await meRes.json();
+        
+        if (!meData.user) {
+          router.push('/login?redirect=/foundation/dashboard');
+          return;
+        }
+        
+        setUser(meData.user);
+        
+        // Fetch lessons
+        const lessonsRes = await fetch('/api/lessons');
+        
+        if (!lessonsRes.ok) {
+          throw new Error(`HTTP ${lessonsRes.status}`);
+        }
+        
+        const lessonsData = await lessonsRes.json();
+        
+        setLessons(lessonsData.lessons || []);
+        setHasPaid(lessonsData.hasPaid || false);
+        
+      } catch (err) {
+        console.error('Dashboard error:', err);
+        setError(err.message);
+      } finally {
+        setLoading(false);
       }
-      
-      setUser(meData.user);
-      
-      const lessonsRes = await fetch('/api/lessons');
-      const lessonsData = await lessonsRes.json();
-      
-      setLessons(lessonsData.lessons || []);
-      setHasPaid(lessonsData.hasPaid || false);
-      setLoading(false);
     }
     
     loadData();
   }, [router]);
 
+  if (loading) {
+    return (
+      <div className="text-center py-12">
+        <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-[#FFB347]"></div>
+        <p className="mt-2">Loading dashboard...</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="text-center py-12">
+        <div className="bg-red-50 border border-red-200 rounded-2xl p-8 max-w-md mx-auto">
+          <h2 className="text-xl font-bold text-red-700 mb-4">Error Loading Dashboard</h2>
+          <p className="text-gray-700 mb-4">{error}</p>
+          <button onClick={() => window.location.reload()} className="btn-primary">
+            Try Again
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return null; // Will redirect in useEffect
+  }
+
   const completedCount = lessons.filter(l => l.completed).length;
   const progress = lessons.length > 0 ? (completedCount / lessons.length) * 100 : 0;
 
-  if (loading) {
-    return <div className="text-center py-12">Loading...</div>;
-  }
-
   return (
     <div className="max-w-4xl mx-auto">
-      {searchParams.get('payment') === 'success' && (
-        <div className="bg-green-50 border border-green-200 rounded-xl p-4 mb-6 text-green-700">
-          ✅ Payment successful! You now have access to all lessons.
-        </div>
-      )}
-      
-      <h1 className="text-3xl font-bold mb-2">Welcome, {user?.name}!</h1>
+      <h1 className="text-3xl font-bold mb-2">Welcome, {user.name}!</h1>
       <p className="text-gray-600 mb-8">
-        {hasPaid ? 'Complete the lessons below to earn your certificate.' : 'Purchase the course to unlock all lessons and earn your certificate.'}
+        {hasPaid 
+          ? 'Complete the lessons below to earn your certificate.' 
+          : 'Purchase the course to unlock all lessons and earn your certificate.'}
       </p>
 
       <div className="bg-white rounded-2xl p-6 shadow-md mb-8">
@@ -106,13 +138,5 @@ function DashboardContent() {
         </div>
       )}
     </div>
-  );
-}
-
-export default function DashboardPage() {
-  return (
-    <Suspense fallback={<div className="text-center py-12">Loading...</div>}>
-      <DashboardContent />
-    </Suspense>
   );
 }
