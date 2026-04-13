@@ -1,9 +1,8 @@
 import { NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
-import { getUserByEmail } from '@/lib/store';
 
-export const dynamic = 'force-dynamic';
-export const runtime = 'nodejs';
+// Shared users array (same as register)
+let users = [];
 
 export async function POST(request) {
   try {
@@ -15,7 +14,7 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Email and password required' }, { status: 400 });
     }
     
-    const user = getUserByEmail(email);
+    const user = users.find(u => u.email === email);
     if (!user) {
       console.log('User not found:', email);
       return NextResponse.json({ error: 'Invalid email or password' }, { status: 401 });
@@ -29,9 +28,10 @@ export async function POST(request) {
     
     console.log('Login successful:', email);
     
+    const redirectUrl = redirect || '/foundation/dashboard';
     const response = NextResponse.json({ 
       success: true, 
-      redirect: redirect || '/foundation/dashboard' 
+      redirect: redirectUrl 
     });
     
     response.cookies.set('session', user.id, {

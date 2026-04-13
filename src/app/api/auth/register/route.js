@@ -1,10 +1,9 @@
 import { NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
 import { v4 as uuidv4 } from 'uuid';
-import { getUserByEmail, createUser } from '@/lib/store';
 
-export const dynamic = 'force-dynamic';
-export const runtime = 'nodejs';
+// In-memory storage (for demo - resets on server restart)
+let users = [];
 
 export async function POST(request) {
   try {
@@ -21,13 +20,13 @@ export async function POST(request) {
     }
     
     // Check if user exists
-    const existingUser = getUserByEmail(email);
+    const existingUser = users.find(u => u.email === email);
     if (existingUser) {
       return NextResponse.json({ error: 'Email already registered' }, { status: 400 });
     }
     
     // Create user
-    const userId = uuidv4();
+    const userId = Date.now().toString();
     const hashedPassword = await bcrypt.hash(password, 10);
     
     const newUser = {
@@ -38,22 +37,27 @@ export async function POST(request) {
       created_at: new Date().toISOString()
     };
     
-    createUser(newUser);
+    users.push(newUser);
     
     console.log('User created:', userId);
     
+    // Create response with redirect
+    const redirectUrl = redirect || '/foundation/dashboard';
     const response = NextResponse.json({ 
       success: true, 
-      redirect: redirect || '/foundation/dashboard' 
+      redirect: redirectUrl 
     });
     
+    // Set session cookie
     response.cookies.set('session', userId, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
       path: '/',
-      maxAge: 60 * 60 * 24 * 7,
+      maxAge: 60 * 60 * 24 * 7, // 7 days
     });
+    
+    console.log('Session cookie set for:', userId);
     
     return response;
     
