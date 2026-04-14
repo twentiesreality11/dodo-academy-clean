@@ -1,29 +1,56 @@
 import { NextResponse } from 'next/server';
+import { neon } from '@neondatabase/serverless';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
-const LESSONS = [
-  { id: '1', title: 'Introduction to Cybersecurity', content: '...', order_num: 1 },
-  { id: '2', title: 'Network Security Fundamentals', content: '...', order_num: 2 },
-  { id: '3', title: 'Cryptography Basics', content: '...', order_num: 3 },
-  { id: '4', title: 'Ethical Hacking Basics', content: '...', order_num: 4 },
-  { id: '5', title: 'Final Assessment', content: '...', order_num: 5 },
-];
-
 export async function GET(request, { params }) {
-  const sessionId = request.cookies.get('session')?.value;
-  
-  if (!sessionId) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  try {
+    const sessionId = request.cookies.get('session')?.value;
+    
+    if (!sessionId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    
+    const { lessonId } = params;
+    
+    if (!process.env.POSTGRES_URL) {
+      // Mock lesson for testing
+      return NextResponse.json({
+        lesson: {
+          id: lessonId,
+          title: 'Lesson ' + lessonId,
+          content: '<div class="lesson-content"><h2>Lesson Content</h2><p>This is a sample lesson.</p></div>'
+        },
+        completed: false
+      });
+    }
+    
+    const sql = neon(process.env.POSTGRES_URL);
+    
+    const lessons = await sql`
+      SELECT * FROM lessons WHERE id = ${lessonId}
+    `;
+    
+    if (!lessons || lessons.length === 0) {
+      return NextResponse.json({ error: 'Lesson not found' }, { status: 404 });
+    }
+    
+    const lesson = lessons[0];
+    
+    // Check if completed
+    const progress = await sql`
+      SELECT completed FROM progress 
+      WHERE user_id = ${sessionId} AND lesson_id = ${lessonId}
+    `;
+    
+    return NextResponse.json({
+      lesson,
+      completed: progress && progress.length > 0 ? progress[0].completed : false
+    });
+    
+  } catch (error) {
+    console.error('Lesson API error:', error);
+    return NextResponse.json({ error: error.message }, { status: 500 });
   }
-  
-  const { lessonId } = params;
-  const lesson = LESSONS.find(l => l.id === lessonId);
-  
-  if (!lesson) {
-    return NextResponse.json({ error: 'Lesson not found' }, { status: 404 });
-  }
-  
-  return NextResponse.json({ lesson, completed: false });
 }
