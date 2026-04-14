@@ -1,11 +1,25 @@
+'use client';
+
 import Link from 'next/link';
+import { useEffect, useState } from 'react';
 
 export default function HomePage() {
+  const [user, setUser] = useState(null);
+
+  useEffect(() => {
+    fetch('/api/auth/me')
+      .then(res => res.json())
+      .then(data => {
+        if (data.user) setUser(data.user);
+      })
+      .catch(() => {});
+  }, []);
+
   return (
     <div className="space-y-16">
       
       {/* Hero Section */}
-      <section className="text-center py-20 bg-gradient-to-br from-[#0B1E33]/5 to-[#FFB347]/10 rounded-3xl">
+      <section className="text-center py-16 bg-gradient-to-br from-[#0B1E33]/5 to-[#FFB347]/10 rounded-3xl">
         <h1 className="text-4xl md:text-6xl font-bold text-[#0B1E33] mb-4">
           Securing Nigeria's <span className="text-[#FFB347]">Digital Future</span>
         </h1>
@@ -14,8 +28,18 @@ export default function HomePage() {
           and developing the next generation of security professionals.
         </p>
         <div className="flex gap-4 justify-center flex-wrap">
-          <Link href="/foundation" className="btn-primary text-lg px-8 py-3">Start Learning Today</Link>
-          <Link href="/consultancy" className="btn-outline text-lg px-8 py-3">Explore Consultancy</Link>
+          {user ? (
+            <Link href="/foundation/dashboard" className="btn-primary text-lg px-8 py-3">
+              Go to Dashboard
+            </Link>
+          ) : (
+            <Link href="/register" className="btn-primary text-lg px-8 py-3">
+              Get Started Free
+            </Link>
+          )}
+          <Link href="/critical" className="btn-outline text-lg px-8 py-3">
+            Learn About CIP
+          </Link>
         </div>
       </section>
 
@@ -77,7 +101,7 @@ export default function HomePage() {
           <h2 className="text-3xl font-bold text-[#0B1E33] mb-3">What We Offer</h2>
           <div className="w-20 h-1 bg-[#FFB347] mx-auto"></div>
           <p className="text-gray-600 mt-4 max-w-2xl mx-auto">
-            Comprehensive cybersecurity training and consultancy services tailored to Nigeria's unique needs
+            Comprehensive cybersecurity training and programs tailored to Nigeria's unique needs
           </p>
         </div>
         <div className="grid md:grid-cols-3 gap-6">
@@ -91,7 +115,7 @@ export default function HomePage() {
               <li>✓ Digital certificate upon completion</li>
               <li>✓ Lifetime access</li>
             </ul>
-            <Link href="/foundation" className="inline-block mt-4 text-[#FFB347] font-semibold hover:underline">Learn more →</Link>
+            <Link href="/foundation/dashboard" className="inline-block mt-4 text-[#FFB347] font-semibold hover:underline">Learn more →</Link>
           </div>
           <div className="card text-center group hover:-translate-y-2 transition">
             <div className="text-5xl mb-4">🛡️</div>
@@ -120,36 +144,6 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* What Students Learn */}
-      <section className="bg-[#0B1E33] text-white rounded-2xl p-10">
-        <div className="text-center mb-8">
-          <h2 className="text-3xl font-bold mb-3">What Our Students Learn</h2>
-          <div className="w-20 h-1 bg-[#FFB347] mx-auto"></div>
-        </div>
-        <div className="grid md:grid-cols-2 gap-8">
-          <div>
-            <h3 className="text-xl font-bold mb-4 text-[#FFB347]">🎯 Foundation Course Curriculum</h3>
-            <ul className="space-y-3">
-              <li className="flex items-start gap-3"><span className="text-[#FFB347]">•</span> <span><strong>Introduction to Cybersecurity</strong> - CIA triad, threat landscape, Nigerian case studies</span></li>
-              <li className="flex items-start gap-3"><span className="text-[#FFB347]">•</span> <span><strong>Network Security Fundamentals</strong> - Firewalls, routers, encryption, MITM attacks</span></li>
-              <li className="flex items-start gap-3"><span className="text-[#FFB347]">•</span> <span><strong>Cryptography Basics</strong> - Symmetric/asymmetric encryption, hashing, digital signatures</span></li>
-              <li className="flex items-start gap-3"><span className="text-[#FFB347]">•</span> <span><strong>Ethical Hacking Basics</strong> - Reconnaissance, scanning, exploitation, reporting</span></li>
-              <li className="flex items-start gap-3"><span className="text-[#FFB347]">•</span> <span><strong>Final Assessment</strong> - 20 questions, 80% passing score required</span></li>
-            </ul>
-          </div>
-          <div>
-            <h3 className="text-xl font-bold mb-4 text-[#FFB347]">🏛️ Critical Infrastructure Program</h3>
-            <ul className="space-y-3">
-              <li className="flex items-start gap-3"><span className="text-[#FFB347]">•</span> <span><strong>OT/ICS Security</strong> - SCADA architectures, industrial control systems</span></li>
-              <li className="flex items-start gap-3"><span className="text-[#FFB347]">•</span> <span><strong>Network Security for Critical Infrastructure</strong> - Segmentation, monitoring</span></li>
-              <li className="flex items-start gap-3"><span className="text-[#FFB347]">•</span> <span><strong>Incident Response & Recovery</strong> - Response plans for critical systems</span></li>
-              <li className="flex items-start gap-3"><span className="text-[#FFB347]">•</span> <span><strong>Compliance & Risk Management</strong> - NIST, ISO 27001, NITDA guidelines</span></li>
-              <li className="flex items-start gap-3"><span className="text-[#FFB347]">•</span> <span><strong>Capstone Project</strong> - Real-world critical infrastructure simulation</span></li>
-            </ul>
-          </div>
-        </div>
-      </section>
-
       {/* NSCDC Partnership */}
       <section className="bg-amber-50 rounded-2xl p-8 border-l-4 border-[#FFB347]">
         <div className="grid md:grid-cols-3 gap-8 items-center">
@@ -167,6 +161,32 @@ export default function HomePage() {
         </div>
       </section>
 
+      {/* Global Frameworks */}
+      <section>
+        <div className="text-center mb-8">
+          <h2 className="text-3xl font-bold text-[#0B1E33] mb-3">Global Standards & Frameworks</h2>
+          <div className="w-20 h-1 bg-[#FFB347] mx-auto"></div>
+        </div>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="bg-white rounded-xl p-4 text-center shadow-sm">
+            <div className="text-2xl font-bold text-[#FFB347] mb-2">NIST</div>
+            <p className="text-xs text-gray-500">Cybersecurity Framework</p>
+          </div>
+          <div className="bg-white rounded-xl p-4 text-center shadow-sm">
+            <div className="text-2xl font-bold text-[#FFB347] mb-2">ISO 27001</div>
+            <p className="text-xs text-gray-500">Information Security</p>
+          </div>
+          <div className="bg-white rounded-xl p-4 text-center shadow-sm">
+            <div className="text-2xl font-bold text-[#FFB347] mb-2">CIS</div>
+            <p className="text-xs text-gray-500">Critical Security Controls</p>
+          </div>
+          <div className="bg-white rounded-xl p-4 text-center shadow-sm">
+            <div className="text-2xl font-bold text-[#FFB347] mb-2">NITDA</div>
+            <p className="text-xs text-gray-500">Nigeria Regulations</p>
+          </div>
+        </div>
+      </section>
+
       {/* Why Choose Dodo Academy */}
       <section>
         <div className="text-center mb-10">
@@ -177,22 +197,22 @@ export default function HomePage() {
           <div className="card">
             <div className="text-3xl mb-3">🇳🇬</div>
             <h3 className="font-bold text-lg mb-2">Nigerian Focus</h3>
-            <p className="text-gray-600 text-sm">Curriculum designed specifically for Nigeria's unique cybersecurity challenges and critical infrastructure needs, with local case studies.</p>
+            <p className="text-gray-600 text-sm">Curriculum designed specifically for Nigeria's unique cybersecurity challenges and critical infrastructure needs.</p>
           </div>
           <div className="card">
             <div className="text-3xl mb-3">🌍</div>
             <h3 className="font-bold text-lg mb-2">Global Standards</h3>
-            <p className="text-gray-600 text-sm">Training aligned with international frameworks including NIST Cybersecurity Framework, ISO 27001, and CIS Controls.</p>
+            <p className="text-gray-600 text-sm">Training aligned with international frameworks including NIST, ISO 27001, and CIS Controls.</p>
           </div>
           <div className="card">
             <div className="text-3xl mb-3">👨‍🏫</div>
             <h3 className="font-bold text-lg mb-2">Expert Instructors</h3>
-            <p className="text-gray-600 text-sm">Learn from experienced cybersecurity professionals with real-world industry experience and global certifications.</p>
+            <p className="text-gray-600 text-sm">Learn from experienced cybersecurity professionals with real-world industry experience.</p>
           </div>
           <div className="card">
             <div className="text-3xl mb-3">📜</div>
             <h3 className="font-bold text-lg mb-2">Certification</h3>
-            <p className="text-gray-600 text-sm">Earn a digital certificate and shareable badge upon completion of our foundation course, verifiable by employers.</p>
+            <p className="text-gray-600 text-sm">Earn a digital certificate and shareable badge upon completion of our foundation course.</p>
           </div>
           <div className="card">
             <div className="text-3xl mb-3">💼</div>
@@ -240,11 +260,17 @@ export default function HomePage() {
         <h2 className="text-3xl font-bold mb-4">Ready to Start Your Cybersecurity Journey?</h2>
         <p className="text-xl mb-6 opacity-90">Join hundreds of students building careers in cybersecurity.</p>
         <div className="flex gap-4 justify-center flex-wrap">
-          <Link href="/register" className="bg-[#FFB347] text-[#0B1E33] px-8 py-3 rounded-full font-bold text-lg hover:bg-[#FFC97A] transition">
-            Get Started Today
-          </Link>
-          <Link href="/contact" className="border-2 border-white text-white px-8 py-3 rounded-full font-bold text-lg hover:bg-white hover:text-[#0B1E33] transition">
-            Contact Us
+          {user ? (
+            <Link href="/foundation/dashboard" className="bg-[#FFB347] text-[#0B1E33] px-8 py-3 rounded-full font-bold text-lg hover:bg-[#FFC97A] transition">
+              Go to Dashboard
+            </Link>
+          ) : (
+            <Link href="/register" className="bg-[#FFB347] text-[#0B1E33] px-8 py-3 rounded-full font-bold text-lg hover:bg-[#FFC97A] transition">
+              Get Started Today
+            </Link>
+          )}
+          <Link href="/critical" className="border-2 border-white text-white px-8 py-3 rounded-full font-bold text-lg hover:bg-white hover:text-[#0B1E33] transition">
+            Learn About CIP
           </Link>
         </div>
         <p className="text-sm mt-6 opacity-75">Free preview available • 7-day money-back guarantee • Lifetime access</p>

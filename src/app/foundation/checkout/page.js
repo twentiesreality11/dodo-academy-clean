@@ -9,29 +9,39 @@ export default function CheckoutPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [user, setUser] = useState(null);
-  const [fetchingUser, setFetchingUser] = useState(true);
+  const [checkingPayment, setCheckingPayment] = useState(true);
 
   useEffect(() => {
-    async function fetchUser() {
+    async function checkUserAndPayment() {
       try {
-        const res = await fetch('/api/auth/me');
-        const data = await res.json();
+        // Check user
+        const meRes = await fetch('/api/auth/me');
+        const meData = await meRes.json();
         
-        if (!data.user) {
+        if (!meData.user) {
           router.push('/login?redirect=/foundation/checkout');
           return;
         }
         
-        setUser(data.user);
+        setUser(meData.user);
+        
+        // Check if already paid
+        const lessonsRes = await fetch('/api/lessons');
+        const lessonsData = await lessonsRes.json();
+        
+        if (lessonsData.hasPaid) {
+          // User already paid, redirect to dashboard
+          router.push('/foundation/dashboard');
+          return;
+        }
       } catch (err) {
-        console.error('Error fetching user:', err);
-        setError('Failed to load user information');
+        console.error('Error:', err);
       } finally {
-        setFetchingUser(false);
+        setCheckingPayment(false);
       }
     }
     
-    fetchUser();
+    checkUserAndPayment();
   }, [router]);
 
   async function handlePayment() {
@@ -59,7 +69,7 @@ export default function CheckoutPage() {
     }
   }
 
-  if (fetchingUser) {
+  if (checkingPayment) {
     return (
       <div className="text-center py-12">
         <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-[#FFB347]"></div>
@@ -69,7 +79,7 @@ export default function CheckoutPage() {
   }
 
   if (!user) {
-    return null; // Will redirect in useEffect
+    return null;
   }
 
   return (
