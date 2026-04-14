@@ -20,7 +20,7 @@ function Header() {
 function Footer() {
   return (
     <footer className="bg-[#0B1E33] text-white/70 text-center p-6 mt-12">
-      <p>&copy; 2024 Dodo Academy. All rights reserved.</p>
+      <p>&copy; 2026 Dodo Academy. All rights reserved.</p>
     </footer>
   );
 }
