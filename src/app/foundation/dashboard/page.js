@@ -30,10 +30,22 @@ export default function DashboardPage() {
         const lessonsRes = await fetch('/api/lessons');
         
         if (!lessonsRes.ok) {
-          throw new Error(`HTTP ${lessonsRes.status}`);
+          throw new Error(`HTTP ${lessonsRes.status}: ${lessonsRes.statusText}`);
         }
         
-        const lessonsData = await lessonsRes.json();
+        const text = await lessonsRes.text();
+        
+        if (!text || text.trim() === '') {
+          throw new Error('Empty response from server');
+        }
+        
+        let lessonsData;
+        try {
+          lessonsData = JSON.parse(text);
+        } catch (parseError) {
+          console.error('JSON parse error:', text.substring(0, 200));
+          throw new Error('Invalid response from server');
+        }
         
         setLessons(lessonsData.lessons || []);
         setHasPaid(lessonsData.hasPaid || false);
@@ -73,7 +85,7 @@ export default function DashboardPage() {
   }
 
   if (!user) {
-    return null; // Will redirect in useEffect
+    return null;
   }
 
   const completedCount = lessons.filter(l => l.completed).length;
@@ -99,36 +111,42 @@ export default function DashboardPage() {
         <p className="text-sm text-gray-500 mt-2">{completedCount} of {lessons.length} lessons completed</p>
       </div>
 
-      <div className="space-y-3">
-        {lessons.map((lesson, index) => (
-          <div key={lesson.id} className="bg-white rounded-xl p-4 shadow-sm flex justify-between items-center">
-            <div className="flex items-center gap-4">
-              <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center font-semibold">
-                {index + 1}
+      {lessons.length === 0 ? (
+        <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-6 text-center">
+          <p className="text-yellow-700">No lessons found. Please check your database connection.</p>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {lessons.map((lesson, index) => (
+            <div key={lesson.id} className="bg-white rounded-xl p-4 shadow-sm flex justify-between items-center">
+              <div className="flex items-center gap-4">
+                <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center font-semibold">
+                  {index + 1}
+                </div>
+                <div>
+                  <div className="text-lg font-semibold text-[#0B1E33]">{lesson.title}</div>
+                  {lesson.locked && !hasPaid && (
+                    <p className="text-xs text-gray-400">🔒 Locked - Purchase required</p>
+                  )}
+                </div>
               </div>
-              <div>
-                <div className="text-lg font-semibold text-[#0B1E33]">{lesson.title}</div>
-                {lesson.locked && !hasPaid && (
-                  <p className="text-xs text-gray-400">🔒 Locked - Purchase required</p>
-                )}
-              </div>
+              {lesson.completed ? (
+                <span className="bg-green-100 text-green-700 px-3 py-1 rounded-full text-sm">✓ Completed</span>
+              ) : lesson.locked && !hasPaid ? (
+                <Link href="/foundation/checkout" className="btn-primary text-sm py-2 px-4">
+                  Purchase to Unlock
+                </Link>
+              ) : (
+                <Link href={`/foundation/lesson/${lesson.id}`} className="btn-outline text-sm py-1 px-4">
+                  Start
+                </Link>
+              )}
             </div>
-            {lesson.completed ? (
-              <span className="bg-green-100 text-green-700 px-3 py-1 rounded-full text-sm">✓ Completed</span>
-            ) : lesson.locked && !hasPaid ? (
-              <Link href="/foundation/checkout" className="btn-primary text-sm py-2 px-4">
-                Purchase to Unlock
-              </Link>
-            ) : (
-              <Link href={`/foundation/lesson/${lesson.id}`} className="btn-outline text-sm py-1 px-4">
-                Start
-              </Link>
-            )}
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
       
-      {hasPaid && completedCount === lessons.length && (
+      {hasPaid && completedCount === lessons.length && lessons.length > 0 && (
         <div className="mt-8 bg-green-50 border border-green-200 rounded-xl p-6 text-center">
           <h2 className="text-xl font-bold text-green-700 mb-2">🎉 You've Completed All Lessons!</h2>
           <p className="text-gray-700 mb-4">Take the final assessment to earn your certificate.</p>
